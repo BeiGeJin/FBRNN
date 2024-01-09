@@ -1,0 +1,131 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage{graphicx}
+\usepackage{xurl}
+\usepackage{geometry}
+\geometry{left=2.54cm, right=2.54cm, top=3.18cm, bottom=3.18cm}
+
+\title{Research Schedule}
+\author{Jerry Jin}
+
+\begin{document}
+
+\maketitle
+
+\section*{Week 9/19}
+
+Main Task: Establish a basic recurrent neural network!
+\begin{itemize}
+    \item Get the code from ankit\_kumar@lbl.gov
+    \item Change the acitivation function to sigmoid, and change the synaptic modulation to gain modulation using back-propagation
+    \item Simulate sin wave
+    \item Simulate dynamics (\url{https://en.wikipedia.org/wiki/Mackey-Glass_equations})
+    \item Obey Dale law
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item Sussillo, D., \& Abbott, L. F. (2009). Generating Coherent Patterns of Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557. \url{https://doi.org/10.1016/j.neuron.2009.07.018}
+    \item Nicola, W., \& Clopath, C. (2017). Supervised learning in spiking neural networks with FORCE training. Nature Communications, 8(1), 2208. \url{https://doi.org/10.1038/s41467-017-01827-3}
+    \item Maass, W., Natschläger, T., \& Markram, H. (2002). Real-Time Computing Without Stable States: A New Framework for Neural Computation Based on Perturbations. Neural Computation, 14(11), 2531–2560. \url{https://doi.org/10.1162/089976602760407955}
+    \item \url{https://en.wikipedia.org/wiki/Reservoir_computing}
+\end{itemize}
+
+\section*{Week 10/16}
+
+Main Task: Add Feedback control to the RNN, and test the performance under noise.
+\begin{itemize}
+    \item Add gaussian noise
+    \item Add Kalma filter and feedback control input
+    \item Test the trained RNN under square wave of noise
+    \item Explore balanced truncation, sparse coding
+    \item 80\% excitatory, 20\% inhibitory
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item Charles, A. S., Balavoine, A., \& Rozell, C. J. (2016). Dynamic Filtering of Time-Varying Sparse Signals via $\ell _1$ Minimization. IEEE Transactions on Signal Processing, 64(21), 5644–5656.
+    \item Rubin, R., Abbott, L. F., \& Sompolinsky, H. (2017). Balanced excitation and inhibition are required for high-capacity, noise-robust neuronal selectivity. Proceedings of the National Academy of Sciences, 114(44).
+    \item Zhang, Z., \& Fujisaki, Y. (2023). Sparse Feedback Controller: From Open-loop Solution to Closed-loop Realization (arXiv:2303.15175). arXiv.
+\end{itemize}
+
+\section*{Week 10/31}
+
+Main Task: Feedback control in Non-linear system, and test Hebbian learning under rhythmatic noise.
+\begin{itemize}
+    \item Get extended kalman filter and non-linear LQR to make the gain modulation RNN work under feedback control
+    \item Add instant noise onto sustained noise
+    \item Add Hebbian learning under noise
+    \item 80\% excitatory, 20\% inhibitory
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item \url{https://en.wikipedia.org/wiki/Extended_Kalman_filter}
+    \item Li, W., \& Todorov, E. (2004). Iterative linear quadratic regulator design for nonlinear biological movement systems. Proceedings of the First International Conference on Informatics in Control, Automation and Robotics, 222–229.
+    \item Sober, S. J., \& Brainard, M. S. (2009). Adult birdsong is actively maintained by error correction. Nature Neuroscience, 12(7), 927–931.
+    \item Warren, T. L., Tumer, E. C., Charlesworth, J. D., \& Brainard, M. S. (2011). Mechanisms and time course of vocal learning and consolidation in the adult songbird. Journal of Neurophysiology, 106(4), 1806–1821.
+    \item Sober, S. J., \& Brainard, M. S. (2012). Vocal learning is constrained by the statistics of sensorimotor experience. Proceedings of the National Academy of Sciences, 109(51), 21099–21103.
+\end{itemize}
+
+\section*{Week 11/13}
+
+Main Task: Adaptative gain modulation and feedback control. Learn the perturbation pattern and gradually transfer the learning to synaptic plasticity.
+
+\begin{itemize}
+    \item Implement gain modulation with feedback control
+    \item Predictive feedback control and time difference learning
+    \item Test the effect of Oja learning
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item Bittner, K. C., Milstein, A. D., Grienberger, C., Romani, S., \& Magee, J. C. (2017). Behavioral time scale synaptic plasticity underlies CA1 place fields. Science, 357(6355), 1033–1036.
+    \item Bouchard, K. E., Ganguli, S., \& Brainard, M. S. (2015). Role of the site of synaptic competition and the balance of learning forces for Hebbian encoding of probabilistic Markov sequences. Frontiers in Computational Neuroscience, 9.
+\end{itemize}
+
+\section*{Week 11/27}
+
+Main Task: Transfer of learning from gains to synapses.
+
+\begin{itemize}
+    \item Find out how Swinehart and Abbott (2005) manage to do the transfer of learning
+    \item Try hard decay on gain modulation magnitude
+    \item On RNN, try inhibitory synaptic plasticity
+    \item Try persistent perturbation rather than periodic perturbation
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item Vogels, T. P., Sprekeler, H., Zenke, F., Clopath, C., \& Gerstner, W. (2011). Inhibitory Plasticity Balances Excitation and Inhibition in Sensory Pathways and Memory Networks. Science, 334(6062), 1569–1573.
+    \item Vogels, T. P., Froemke, R. C., Doyon, N., Gilson, M., Haas, J. S., Liu, R., Maffei, A., Miller, P., Wierenga, C. J., Woodin, M. A., Zenke, F., \& Sprekeler, H. (2013). Inhibitory synaptic plasticity: Spike timing-dependence and putative network function. Frontiers in Neural Circuits, 7.
+\end{itemize}
+
+\section*{Week 12/11}
+
+Main Task: Transfer of learning from gains to synapses, cont.
+
+\begin{itemize}
+    \item Slowly grow the Hebbian learning rate, avoid abrupt change
+    \item On RNN, try inhibitory synaptic plasticity and get the transfer of learning work
+    \item Try persistent perturbation rather than periodic perturbation
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item Rozell, C., Johnson, D., Baraniuk, R., \& Olshausen, B. (2007). Locally Competitive Algorithms for Sparse Approximation. 2007 IEEE International Conference on Image Processing, IV-169-IV–172.
+    \item Paul, A., Wagner, S., \& Das, A. (2022). Learning in Feedback-driven Recurrent Spiking Neural Networks using full-FORCE Training (arXiv:2205.13585). arXiv.
+    \item Ogawa, S., Fumarola, F., \& Mazzucato, L. (2023). Multitasking via baseline control in recurrent neural networks. Proceedings of the National Academy of Sciences, 120(33), e2304394120.
+\end{itemize}
+\end{document}
