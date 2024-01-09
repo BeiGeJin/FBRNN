@@ -19,10 +19,10 @@ inputs = np.sin(time_points/60*np.pi)
 targets = np.sin((time_points+1)/60*np.pi)
 inputs = inputs.reshape(-1, 1)
 targets = targets.reshape(-1, 1)
-plt.plot(time_points, inputs)
-plt.plot(time_points, targets)
-plt.legend()
-plt.savefig("fig/sin_input.png")
+# plt.plot(time_points, inputs)
+# plt.plot(time_points, targets)
+# plt.legend()
+# plt.savefig("fig/sin_input.png")
 
 # Defining constant
 time_constant = 100  # ms

@@ -1,3 +1,4 @@
+# RNN without modifiable gain and shift, training on weights
 import numpy as np
 from tqdm import tqdm
 import torch
