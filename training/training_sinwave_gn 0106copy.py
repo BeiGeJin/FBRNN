@@ -12,7 +12,7 @@ import torch
 import pickle
 
 SAVE_CHECKPOINT = False
-LOAD_CHECKPOINT = False
+LOAD_CHECKPOINT = True
 checkpoint_epoch = 8000
 
 num_iters = int(input("Enter number of training iterations: "))
@@ -72,13 +72,11 @@ sc_thresh = np.sqrt(num_nodes) * 0.01
 hebbian_lr = 0
 max_hebbian_lr = 0.01
 hebbian_up_rate = max_hebbian_lr / 2000
-narrow_factor = 0.0001
+narrow_factor = 0
 max_narrow_factor = 0.0001
 narrow_up_rate = max_narrow_factor / 2000
 oja_alpha_ext = 16.5
 oja_alpha_inh = 13.5
-hebb_alpha_ext = 611
-hebb_alpha_inh = 618
 
 losses = []
 gain_changes = []
@@ -129,20 +127,14 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
         hebbian_update = mean_activates * mean_activates.T
         # hebbian_update = hebbian_update * network.weight_type * network.connectivity_matrix
         hebbian_update = hebbian_update * (network.weight_type * 2 - 1) * network.connectivity_matrix
-        ## Regulation term of Oja
-        # rj_square = (mean_activates**2).expand(-1, network.num_nodes)
+        # Regulation term of Oja
+        rj_square = (mean_activates**2).expand(-1, network.num_nodes)
         # oja_regulation = oja_alpha * rj_square * network.weight_matrix * network.weight_type * network.connectivity_matrix
-        # oja_regulation_ext = oja_alpha_ext * rj_square * network.weight_matrix * network.weight_type * network.connectivity_matrix
-        # oja_regulation_inh = oja_alpha_inh * rj_square * network.weight_matrix * (~network.weight_type) * network.connectivity_matrix
-        # oja_regulation = oja_regulation_ext + oja_regulation_inh
-        ## Oja's rule
-        # network.weight_matrix = network.weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
-        # Normalized Hebbian learning
-        network.weight_matrix = network.weight_matrix + hebbian_lr * hebbian_update
-        tmp_weights_ext = network.weight_matrix[network.weight_type]
-        tmp_weights_inh = network.weight_matrix[~network.weight_type]
-        network.weight_matrix[network.weight_type] = tmp_weights_ext / torch.sum(torch.abs(tmp_weights_ext)) * hebb_alpha_ext
-        network.weight_matrix[~network.weight_type] = tmp_weights_inh / torch.sum(torch.abs(tmp_weights_inh)) * hebb_alpha_inh
+        oja_regulation_ext = oja_alpha_ext * rj_square * network.weight_matrix * network.weight_type * network.connectivity_matrix
+        oja_regulation_inh = oja_alpha_inh * rj_square * network.weight_matrix * (~network.weight_type) * network.connectivity_matrix
+        oja_regulation = oja_regulation_ext + oja_regulation_inh
+        # Oja's rule
+        network.weight_matrix = network.weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
     # update init weights
     weight_matrix = network.weight_matrix.detach().numpy()
 

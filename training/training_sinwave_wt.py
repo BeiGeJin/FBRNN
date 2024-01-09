@@ -1,4 +1,4 @@
-# RNN on sine wave, using bp on weight matrix
+# RNN on sine wave, using bp on weight matrix, enforce Dale's law
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -18,6 +18,8 @@ time_points = np.arange(300).reshape(-1, 1)
 # targets = (1 + np.sin((time_points+1)/60*np.pi))/2
 inputs = np.sin(time_points/60*np.pi)
 targets = np.sin((time_points+1)/60*np.pi)
+# inputs = np.sin(time_points/60*np.pi) / 4 + 0.5
+# targets = np.sin((time_points+1)/60*np.pi) / 4 + 0.5
 inputs = inputs.reshape(-1, 1)
 targets = targets.reshape(-1, 1)
 plt.plot(time_points, inputs, label='input')
@@ -67,7 +69,7 @@ for epoch in tqdm(range(num_iters), position=0, leave=True):
                 time_constant=time_constant, timestep=timestep)
     
     # train
-    loss = network.train_epoch(targets, time, inputs, learning_rate=0.01)
+    loss = network.train_epoch(targets, time, inputs, learning_rate=0.2)
 
     # update init gains and shifts
     init_gains = network.gain.detach().numpy()

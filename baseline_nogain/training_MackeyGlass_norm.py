@@ -37,7 +37,7 @@ targets = MG_sequence[1:301].reshape(-1,1)
 import matplotlib.pyplot as plt
 plt.plot(np.arange(300), inputs)
 plt.plot(np.arange(300), targets)
-plt.savefig("MG_input.png")
+plt.savefig("fig/MG_input.png")
 
 # Defining constant
 time_constant = 100 #ms

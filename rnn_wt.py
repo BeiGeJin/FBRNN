@@ -73,8 +73,8 @@ class RNN:
         self.activation = torch.tensor(init_activations, dtype=torch.float32)
         self.activation_func = activation_func
         self.output_nonlinearity = output_nonlinearity
-        self.gain = torch.tensor(init_gains, dtype=torch.float32)
-        self.shift = torch.tensor(init_shifts, dtype=torch.float32)
+        self.gain = torch.tensor(init_gains, dtype=torch.float32, requires_grad=True)
+        self.shift = torch.tensor(init_shifts, dtype=torch.float32, requires_grad=True)
 
         self.time_const = time_constant
         self.timestep = timestep
@@ -136,6 +136,7 @@ class RNN:
 
         return compiled_outputs, compiled_activations
 
+    """
     def train(self, num_iters, targets, time, inputs, batch_size=1,
               learning_rate=0.001, weight_decay=0.002,
               hebbian_learning=True, hebbian_learning_rate=0.01, hebbian_decay=0.999):
@@ -221,20 +222,22 @@ class RNN:
                 weight_history.append(gain_changes)
 
         return weight_history, losses
+    """
 
     def train_epoch(self, targets, time, inputs, learning_rate=0.001):
             
             inputs = torch.tensor(inputs).float()
             targets = torch.tensor(targets).float()
 
-            opt = torch.optim.Adam([self.weight_matrix], lr=learning_rate)
+            # opt = torch.optim.Adam([self.weight_matrix], lr=learning_rate)
             # opt = torch.optim.Adam([self.gain, self.shift], lr=learning_rate)
-            # opt = torch.optim.SGD([self.weight_matrix], lr=learning_rate)
+            opt = torch.optim.SGD([self.weight_matrix], lr=learning_rate)
             self.reset_activations()
             opt.zero_grad()
             loss_func = nn.MSELoss()
             simulated, _ = self.simulate(time, inputs, True)
-            loss_val = loss_func(simulated, targets)
+            loss_val = loss_func(simulated[100:,:], targets[100:,:])
+            # loss_val = loss_func(simulated, targets)
             loss_val.backward()
             opt.step()
 

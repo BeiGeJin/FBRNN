@@ -135,7 +135,7 @@ class RNN:
         compiled_activations = torch.stack(compiled_activations, dim=0)
 
         return compiled_outputs, compiled_activations
-
+    """
     def train(self, num_iters, targets, time, inputs, batch_size=1,
               learning_rate=0.001, weight_decay=0.002,
               hebbian_learning=True, hebbian_learning_rate=0.01, hebbian_decay=0.999):
@@ -221,6 +221,7 @@ class RNN:
                 weight_history.append(gain_changes)
 
         return weight_history, losses
+    """
 
     def train_epoch(self, targets, time, inputs, learning_rate=0.001):
             
@@ -234,7 +235,8 @@ class RNN:
             opt.zero_grad()
             loss_func = nn.MSELoss()
             simulated, activates = self.simulate(time, inputs, True)
-            loss_val = loss_func(simulated, targets)
+            loss_val = loss_func(simulated[100:,:], targets[100:,:])
+            # loss_val = loss_func(simulated, targets)
             loss_val.backward()
             opt.step()
 
