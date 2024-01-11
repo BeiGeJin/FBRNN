@@ -1,7 +1,7 @@
 #Training Simple Perceptual Decision Making task
 import numpy as np
 import sys
-from rnn_lin import RNN
+from baseline_linear.rnn_lin import RNN
 import json
 from tqdm import tqdm
 import os

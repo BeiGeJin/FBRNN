@@ -79,7 +79,7 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['weight_sums'] = np.asarray(weight_history[3]).tolist()
 net_weight_history['gain_changes'] = np.asarray(weight_history[4]).tolist()
 
-if not os.path.isdir('../weights/sinwave_oja_' + str(num_nodes) + '_nodes'):
-    os.mkdir('../weights/sinwave_oja_' + str(num_nodes) + '_nodes')
-with open('../weights/sinwave_oja_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+if not os.path.isdir('../weights/SIN_oja_' + str(num_nodes) + '_nodes'):
+    os.mkdir('../weights/SIN_oja_' + str(num_nodes) + '_nodes')
+with open('../weights/SIN_oja_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
     json.dump(net_weight_history, f)

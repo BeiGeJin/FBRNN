@@ -2,7 +2,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-from rnn_lin import RNN
+sys.path.append("..")
+from rnn import RNN
 import json
 from tqdm import tqdm
 import os
@@ -30,12 +31,13 @@ time = 3000  # ms
 num_inputs = 1
 
 # Dale's Law
-excite_perc = 0.50
+excite_perc = 0.5
 excite_num = int(excite_perc*num_nodes)
 rng = np.random.default_rng(seed=42)
 node_type = rng.permutation([1]*excite_num + [-1]*(num_nodes-excite_num))
 
 # Initializing matrix
+np.random.seed(1)
 connectivity_matrix = np.ones((num_nodes, num_nodes))
 weight_matrix = np.random.normal(0, 1/np.sqrt(num_nodes), (num_nodes, num_nodes))
 for i in range(num_nodes):
@@ -63,19 +65,17 @@ print('Training...', flush=True)
 weight_history, losses = network.train(num_iters, targets, time, inputs=inputs,
                                        input_weight_matrix=input_weight_matrix,
                                        hebbian_learning=False, 
-                                       learning_rate=.005)
+                                       learning_rate=.2)
 
-# net_weight_history['trained gain'] = np.asarray(weight_history[0]).tolist()
-# net_weight_history['trained shift'] = np.asarray(weight_history[1]).tolist()
-# net_weight_history['trained weights'] = np.asarray(weight_history[2]).tolist()
-net_weight_history['trained weights'] = np.asarray(weight_history[0]).tolist()
+net_weight_history['trained gain'] = np.asarray(weight_history[0]).tolist()
+net_weight_history['trained shift'] = np.asarray(weight_history[1]).tolist()
+net_weight_history['trained weights'] = np.asarray(weight_history[2]).tolist()
 net_weight_history['connectivity matrix'] = np.asarray(connectivity_matrix).tolist()
 net_weight_history['input weights'] = np.asarray(input_weight_matrix).tolist()
 net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 net_weight_history['losses'] = np.asarray(losses).tolist()
-net_weight_history['weight_posneg'] = np.asarray(network.weight_posneg).tolist()
 
-if not os.path.isdir('sinwave_lin_' + str(num_nodes) + '_nodes'):
-    os.mkdir('sinwave_lin_' + str(num_nodes) + '_nodes')
-with open('sinwave_lin_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+if not os.path.isdir('../weights/SIN_bpgain_' + str(num_nodes) + '_nodes'):
+    os.mkdir('../weights/SIN_bpgain_' + str(num_nodes) + '_nodes')
+with open('../weights/SIN_bpgain_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
     json.dump(net_weight_history, f)

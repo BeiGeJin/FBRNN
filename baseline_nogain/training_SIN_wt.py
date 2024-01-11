@@ -1,16 +1,16 @@
 # RNN on sine wave, using bp on weight matrix, enforce Dale's law
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
-sys.path.append("..")
 from rnn_wt import RNN
 import json
 from tqdm import tqdm
 import os
 import torch.nn as nn
 
-num_iters = int(input("Enter number of training iterations: "))
-num_nodes = int(input("Enter number of nodes: "))
+num_iters = 5000
+num_nodes = 128
+# num_iters = int(input("Enter number of training iterations: "))
+# num_nodes = int(input("Enter number of nodes: "))
 
 # Defining Inputs and Targets
 time_points = np.arange(300).reshape(-1, 1)
@@ -22,10 +22,10 @@ targets = np.sin((time_points+1)/60*np.pi)
 # targets = np.sin((time_points+1)/60*np.pi) / 4 + 0.5
 inputs = inputs.reshape(-1, 1)
 targets = targets.reshape(-1, 1)
-plt.plot(time_points, inputs, label='input')
-plt.plot(time_points, targets, label='target')
-plt.legend()
-plt.savefig("sin_input.png")
+# plt.plot(time_points, inputs, label='input')
+# plt.plot(time_points, targets, label='target')
+# plt.legend()
+# plt.savefig("sin_input.png")
 
 # Defining constant
 time_constant = 100  # ms
@@ -100,7 +100,7 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 # net_weight_history['gain_changes'] = np.asarray(weight_history[4]).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 
-if not os.path.isdir('../weights/sinwave_wt_' + str(num_nodes) + '_nodes'):
-    os.mkdir('../weights/sinwave_wt_' + str(num_nodes) + '_nodes')
-with open('../weights/sinwave_wt_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+if not os.path.isdir('SIN_wt_' + str(num_nodes) + '_nodes'):
+    os.mkdir('SIN_wt_' + str(num_nodes) + '_nodes')
+with open('SIN_wt_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
     json.dump(net_weight_history, f)
