@@ -1,3 +1,5 @@
+# repitition of abb05, bp on gains and shifts, and then do hebbian learning to transfer learning to weights
+# only do hebbian learning and narrowing when loss is below a threshold
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -200,7 +202,7 @@ if __name__ == "__main__":
     epochs = epoch + 1
     print(f"true epochs: {epochs}")
 
-    filename = "abb05_rep.pkl"
+    filename = "weights_abb05_threshhebb.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(model, f)
         pickle.dump(losses, f)

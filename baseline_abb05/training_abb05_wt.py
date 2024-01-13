@@ -1,3 +1,4 @@
+# Only bp on weight matrix, to find out what the final solution should be like
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,9 +11,9 @@ class SimpleNeuralNetwork(nn.Module):
     def __init__(self, input_size, init_gain, init_shift, init_weight):
         super(SimpleNeuralNetwork, self).__init__()
         self.input_size = input_size
-        self.gain = torch.tensor(init_gain, dtype=torch.float32, requires_grad=True)
-        self.shift = torch.tensor(init_shift, dtype=torch.float32, requires_grad=True)
-        self.weights = torch.tensor(init_weight, dtype=torch.float32)
+        self.gain = torch.tensor(init_gain, dtype=torch.float32)
+        self.shift = torch.tensor(init_shift, dtype=torch.float32)
+        self.weights = torch.tensor(init_weight, dtype=torch.float32, requires_grad=True)
         self.activation_func = nn.Sigmoid()
 
         # just to record
@@ -36,8 +37,8 @@ class SimpleNeuralNetwork(nn.Module):
         return self.output_activation
 
     def train_epoch(self, xs, ys, hebbian_lr = 0.03, hebb_alpha = 5.5, oja_alpha = 1):
-        # optimizer = optim.Adam([self.gain], lr=0.01)
-        optimizer = optim.SGD([self.gain, self.shift], lr=0.2)
+        # optimizer = optim.Adam([self.weights], lr=0.001)
+        optimizer = optim.SGD([self.weights], lr=0.1)
         loss_func = nn.MSELoss()
         epoch_loss = 0
         self.epoch += 1
@@ -62,8 +63,8 @@ if __name__ == "__main__":
     input_size = 230
     init_gain = 3 * np.ones((input_size, 1))
     init_shift = 1 * np.ones((input_size, 1))
-    theo_gain = 3 * np.ones((input_size, 1))
-    theo_shift = 1 * np.ones((input_size, 1))
+    # init_gain = 3 * np.random.random((input_size, 1))
+    # init_shift = 1 * np.random.random((input_size, 1))
     init_weight = np.ones((1, input_size)) * 5.5 / input_size
 
     # Data Generation, we will generate data points between 0 and 2*pi
@@ -74,10 +75,8 @@ if __name__ == "__main__":
     # Training Loop
     epochs = 2000
     losses = []
-    gain_changes = []
-    shift_changes = []
-    gains = []
-    shifts = []
+    weight_sums = []
+    weights = []
 
     for epoch in tqdm(range(epochs), position=0, leave=True):
         # establish model
@@ -99,23 +98,20 @@ if __name__ == "__main__":
         # print out info
         if epoch % 10 == 0:
             print(f'Epoch {epoch+1}/{epochs}, Loss: {epoch_loss}')
-            print(init_gain[0:10])
+            print(init_weight[:, 0:10])
+            # print(model.weights.detach().numpy()[:,0:10])
         
         # record
-        gain_changes.append(np.linalg.norm(init_gain - theo_gain, 2))
-        shift_changes.append(np.linalg.norm(init_shift - theo_shift, 2))
-        gains.append(init_gain)
-        shifts.append(init_shift)
+        weight_sums.append(np.sum(init_weight[:, 0:100]))
+        weights.append(init_weight)
 
     # true epoch
     epochs = epoch + 1
     print(f"true epochs: {epochs}")
 
-    filename = "abb05_gn.pkl"
+    filename = "weights_abb05_wt.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(model, f)
         pickle.dump(losses, f)
-        pickle.dump(gain_changes, f)
-        pickle.dump(shift_changes, f)
-        pickle.dump(gains, f)
-        pickle.dump(shifts, f)
+        pickle.dump(weight_sums, f)
+        pickle.dump(weights, f)

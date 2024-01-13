@@ -39,45 +39,22 @@ class SimpleNeuralNetwork(nn.Module):
         self.output_activation = x.clone()
         return x
 
-    def train_epoch(self, xs, ys, hebbian_lr=0.03, hebb_alpha=5.5, oja_alpha=1, epoch=0):
+    def train_point(self, x, y):
         # optimizer = optim.Adam([self.gain, self.shift], lr=0.05)
         optimizer = optim.SGD([self.gain, self.shift], lr=0.2)
         loss_func = nn.MSELoss()
-        epoch_loss = 0
+        optimizer.zero_grad()
 
-        for x, y in zip(xs, ys):
-            optimizer.zero_grad()
-
-            # simulate output
-            output = self.forward(x)
-            loss = 0.5 * loss_func(output, y)
-            # loss = loss + 0.0000001 * epoch * (torch.linalg.vector_norm(self.gain - self.init_gain) + torch.linalg.vector_norm(self.shift - self.init_shift))
-
-            # hebbian learning
-            if epoch > 200 and loss < 0.001:
-                with torch.no_grad():
-                    # Calculate Hebbian weight updates
-                    hebbian_update = self.output_activation * (self.input_activation).T
-
-                    # # Apply Hebbian updates and normalize
-                    self.weights = self.weights + hebbian_lr * hebbian_update
-                    self.weights = self.weights / torch.sum(self.weights) * hebb_alpha
-
-                    # # Regulation term of Oja
-                    # rj_square = (model.output_activation**2).expand(-1, model.input_size)
-                    # oja_regulation = oja_alpha * rj_square * model.weights
-
-                    # # Oja's rule
-                    # model.weights = model.weights + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
+        # simulate output
+        output = self.forward(x).squeeze()
+        loss = 0.5 * loss_func(output, y)
+        # loss = loss + 0.0000001 * epoch * (torch.linalg.vector_norm(self.gain - self.init_gain) + torch.linalg.vector_norm(self.shift - self.init_shift))
         
-            # gain modulation
-            loss.backward()
-            optimizer.step()
-
-            # record loss
-            epoch_loss += loss
+        # gain modulation
+        loss.backward()
+        optimizer.step()
         
-        return epoch_loss.detach().item()
+        return loss.detach().item()
 
 
 ## RUN
@@ -101,75 +78,84 @@ if __name__ == "__main__":
     # oja_alpha = 1
 
     # Training Loop
-    epochs = 10000
-    has_boundary = 0
-    narrow_factor = 0.002
+    epochs = 3000
+    has_boundary = False
+    has_hebbian = False
+    narrow_factor = 0
+    max_narrow_factor = 0.0001
+    narrow_up_rate = max_narrow_factor / 1000
     gc_thresh = np.sqrt(input_size) * 0.01
     sc_thresh = np.sqrt(input_size) * 0.01
+    hebbian_lr = 0
+    max_hebbian_lr = 0.001
+    hebbian_up_rate = max_hebbian_lr / 1000
+    hebb_alpha = 5.5
+    oja_alpha = 12
+
     losses = []
     weight_sums = []
     weights = []
     gain_changes = []
     shift_changes = []
+    epoch_loss = 0
 
     for epoch in tqdm(range(epochs), position=0, leave=True):
-
-        # establish model
-        model = SimpleNeuralNetwork(input_size, init_gain, init_shift, init_weight)
 
         # shuffle data
         perm_idx = torch.randperm(ndata)
         shuffled_xs = xs[perm_idx]
         shuffled_ys = ys[perm_idx]
-        epoch_loss = model.train_epoch(shuffled_xs, shuffled_ys, epoch=epoch)
-        epoch_loss /= ndata
-        losses.append(epoch_loss)
+        last_epoch_loss = epoch_loss
+        epoch_loss = 0
 
-        # update init
-        init_gain = model.gain.detach().numpy()
-        init_shift = model.shift.detach().numpy()
-        init_weight = model.weights.detach().numpy()
-        gain_change = np.linalg.norm(init_gain - theo_gain, 2)
-        shift_change = np.linalg.norm(init_shift - theo_shift, 2)
+        for x, y in zip(shuffled_xs, shuffled_ys):
 
-        # for x, y in zip(shuffled_xs, shuffled_ys):
-        #     # gain modulation
-        #     optimizer.zero_grad()
-        #     output = model(x)
-        #     loss = 0.5 * criterion(output, y)
-        #     loss.backward(retain_graph=True)
-        #     optimizer.step()
+            # establish model
+            model = SimpleNeuralNetwork(input_size, init_gain, init_shift, init_weight)
+            loss = model.train_point(x, y)
+            epoch_loss += loss
 
-        #     # oja learning
-        #     with torch.no_grad():
-        #         # # Calculate Hebbian weight updates
-        #         # hebbian_update = model.output_activation * (model.input_activation).T
+            # update init gains and shifts
+            init_gain = model.gain.detach().numpy()
+            init_shift = model.shift.detach().numpy()
+            gain_change = np.linalg.norm(init_gain - theo_gain, 2)
+            shift_change = np.linalg.norm(init_shift - theo_shift, 2)
 
-        #         # # # Regulation term of Oja
-        #         # # rj_square = (model.output_activation**2).expand(-1, model.input_size)
-        #         # # oja_regulation = oja_alpha * rj_square * model.weights
+            # hebbian learning
+            if epoch > 200 and last_epoch_loss < 0.001 and has_hebbian == False:
+                print("hebbian start!!!")
+                has_hebbian = True
+            if has_hebbian and loss < 0.001:
+            # if has_hebbian:
+                # Update hebbian lr if not max
+                if hebbian_lr < max_hebbian_lr:
+                    hebbian_lr += hebbian_up_rate/ndata
+                # Calculate Hebbian weight updates
+                hebbian_update = model.output_activation * (model.input_activation).T
+                # # Apply Hebbian updates and normalize
+                # model.weights = model.weights + hebbian_lr * hebbian_update
+                # model.weights = model.weights / torch.sum(model.weights) * hebb_alpha
+                # Regulation term of Oja
+                rj_square = (model.output_activation**2).expand(-1, model.input_size)
+                oja_regulation = oja_alpha * rj_square * model.weights
+                # Oja's rule
+                model.weights = model.weights + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation            
+            # update init weights
+            init_weight = model.weights.detach().numpy()
 
-        #         # # # Oja's rule
-        #         # # model.weights = model.weights + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
-
-        #         # # Apply Hebbian updates and normalize
-        #         # model.weights = model.weights + hebbian_lr * hebbian_update
-        #         # model.weights = model.weights / torch.sum(model.weights) * hebb_alpha
-            
-        #     # record loss
-        #     epoch_loss += loss.item()
-
-        # shrink shift and gain to init value
-        if epoch > 200 and epoch_loss < 0.001:
-            if has_boundary == 0:
+            # shrink shift and gain to init value
+            if epoch > 400 and last_epoch_loss < 0.001 and has_boundary == False:
                 # create boundaries
                 gain_ub = np.maximum(init_gain, theo_gain)
                 gain_lb = np.minimum(init_gain, theo_gain)
                 shift_ub = np.maximum(init_shift, theo_shift)
                 shift_lb = np.minimum(init_shift, theo_shift)
-                has_boundary = 1
+                has_boundary = True
                 print("boundary start!!!")
-            else:
+            if has_boundary and last_epoch_loss < 0.001:
+                # update narrow factor if not max
+                if narrow_factor < max_narrow_factor:
+                    narrow_factor += narrow_up_rate/ndata
                 # passively narrow the boundaries
                 gain_ub = np.maximum(np.minimum(init_gain, gain_ub), theo_gain)
                 gain_lb = np.minimum(np.maximum(init_gain, gain_lb), theo_gain)
@@ -184,12 +170,15 @@ if __name__ == "__main__":
                     shift_ub -= narrow_factor * (shift_ub - theo_shift)
                 if np.linalg.norm(shift_lb - theo_shift, 2) > sc_thresh:
                     shift_lb -= narrow_factor * (shift_lb - theo_shift)
-        # pull gains and shifts back to into boundaries
-        if epoch > 200 and has_boundary == 1:
-            init_gain = np.minimum(init_gain, gain_ub)
-            init_gain = np.maximum(init_gain, gain_lb)
-            init_shift = np.minimum(init_shift, shift_ub)
-            init_shift = np.maximum(init_shift, shift_lb)
+            # pull gains and shifts back to into boundaries
+            if has_boundary:
+                init_gain = np.minimum(init_gain, gain_ub)
+                init_gain = np.maximum(init_gain, gain_lb)
+                init_shift = np.minimum(init_shift, shift_ub)
+                init_shift = np.maximum(init_shift, shift_lb)
+
+        # calc epoch loss
+        epoch_loss /= ndata
 
         # print out info
         if epoch % 10 == 0:
@@ -197,6 +186,7 @@ if __name__ == "__main__":
             print(model.gain.detach().numpy()[0:10])
 
         # record
+        losses.append(epoch_loss)
         weight_sums.append(np.sum(init_weight[:, 0:100]))
         gain_changes.append(gain_change)
         shift_changes.append(shift_change)
@@ -210,7 +200,7 @@ if __name__ == "__main__":
     epochs = epoch + 1
     print(f"true epochs: {epochs}")
 
-    filename = "abb05_rep.pkl"
+    filename = "weights_abb05.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(model, f)
         pickle.dump(losses, f)
