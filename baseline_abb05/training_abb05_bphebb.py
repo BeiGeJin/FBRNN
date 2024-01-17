@@ -71,16 +71,12 @@ if __name__ == "__main__":
     ys = torch.cos(xs)/4 + 0.5
 
     # training loop
-    epochs = 5000
-    gc_thresh = np.sqrt(input_size) * 0.01
-    sc_thresh = np.sqrt(input_size) * 0.01
-    narrow_factor = 0
-    max_narrow_factor = 0.001
-    narrow_up_rate = max_narrow_factor / 1000
+    epochs = 1000
     hebbian_lr = 0
-    max_hebbian_lr = 0.00001  # 0.001, 0.000001
-    hebbian_up_rate = max_hebbian_lr / 1000
-    oja_alpha = 12
+    max_hebbian_lr = 0.03  # 0.001, 0.000001
+    hebbian_up_rate = max_hebbian_lr / 500
+    hebb_alpha = 5.5
+    backprop_lr = 0.2
     has_backprop = True
     has_boundary = False
     has_hebbian = False
@@ -101,112 +97,89 @@ if __name__ == "__main__":
         shuffled_ys = ys[perm_idx]
         last_epoch_loss = epoch_loss
         epoch_loss = 0
+        hebbian_update = torch.zeros_like(torch.tensor(init_weight))
 
         # update hebbian learning rate, once per epoch
         if has_hebbian and hebbian_lr < max_hebbian_lr:
             hebbian_lr += hebbian_up_rate
-    
-        if has_boundary:
-            # update narrow factor, once per epoch
-            if narrow_factor < max_narrow_factor:
-                narrow_factor += narrow_up_rate
-            # actively narrow the boundaries
-            if np.linalg.norm(gain_ub - theo_gain, 2) > gc_thresh:
-                gain_ub -= narrow_factor * (gain_ub - theo_gain)
-            if np.linalg.norm(gain_lb - theo_gain, 2) > gc_thresh:
-                gain_lb -= narrow_factor * (gain_lb - theo_gain)
-            if np.linalg.norm(shift_ub - theo_shift, 2) > sc_thresh:
-                shift_ub -= narrow_factor * (shift_ub - theo_shift)
-            if np.linalg.norm(shift_lb - theo_shift, 2) > sc_thresh:
-                shift_lb -= narrow_factor * (shift_lb - theo_shift)
-            
-            # if gain_change < gc_thresh and shift_change < sc_thresh:
-            #     break
 
-        for x, y in zip(shuffled_xs, shuffled_ys):
-            
-            # establish model
-            model = SimpleNeuralNetwork(input_size, init_gain, init_shift, init_weight)
+        # establish model
+        model = SimpleNeuralNetwork(input_size, init_gain, init_shift, init_weight)
 
-            # forward
+        # start hebbian and shrinkage
+        if epoch > 10 and last_epoch_loss < 0.001 and has_hebbian == False:
+            has_hebbian = True
+            # has_backprop = False
+        if epoch > 10 and last_epoch_loss < 0.001 and has_boundary == False:
+            # create boundaries
+            gain_ub = np.maximum(init_gain, theo_gain)
+            gain_lb = np.minimum(init_gain, theo_gain)
+            shift_ub = np.maximum(init_shift, theo_shift)
+            shift_lb = np.minimum(init_shift, theo_shift)
+            has_boundary = True
+            print("learning start!!!")
+
+        # forward
+        for x, y in zip(shuffled_xs, shuffled_ys):            
             actv_opl = model(x)
             output = actv_opl.squeeze()
+            # Calculate loss
             loss_func = nn.MSELoss()
             loss = 0.5 * loss_func(output, y)
-            epoch_loss += loss.item()
+            epoch_loss += loss
+            # Calculate Hebbian weight updates
+            hebbian_update += model.output_activation * (model.input_activation).T
 
-            # backprop
-            if has_backprop:
-                optimizer = optim.SGD([model.gain, model.shift], lr=0.2)
-                loss.backward()
-                optimizer.step()
+        # backprop for gains and shifts
+        if has_backprop:
+            optimizer = optim.SGD([model.gain, model.shift], lr=backprop_lr)
+            epoch_loss.backward()
+            optimizer.step()
+        # update init gains and shifts
+        init_gain = model.gain.detach().numpy()
+        init_shift = model.shift.detach().numpy()
+        gain_change = np.linalg.norm(init_gain - theo_gain, 2)
+        shift_change = np.linalg.norm(init_shift - theo_shift, 2)
 
-            # update init gains and shifts
-            init_gain = model.gain.detach().numpy()
-            init_shift = model.shift.detach().numpy()
-            gain_change = np.linalg.norm(init_gain - theo_gain, 2)
-            shift_change = np.linalg.norm(init_shift - theo_shift, 2)
+        # hebbian learning for weights
+        if has_hebbian:
+            # Apply Hebbian updates and normalize
+            model.weights = model.weights + hebbian_lr * hebbian_update
+            model.weights = model.weights / torch.sum(model.weights) * hebb_alpha
+        # update init weights
+        init_weight = model.weights.detach().numpy()
 
-            # start hebbian and shrinkage
-            if epoch > 10 and last_epoch_loss < 0.001 and has_hebbian == False:
-                has_hebbian = True
-                has_backprop = False
-            if epoch > 10 and last_epoch_loss < 0.001 and has_boundary == False:
-                # create boundaries
-                gain_ub = np.maximum(init_gain, theo_gain)
-                gain_lb = np.minimum(init_gain, theo_gain)
-                shift_ub = np.maximum(init_shift, theo_shift)
-                shift_lb = np.minimum(init_shift, theo_shift)
-                has_boundary = True
-                print("learning start!!!")
-
-            # update weights
-            if has_hebbian:
-                # Calculate Hebbian weight updates
-                hebbian_update = model.output_activation * (model.input_activation).T
-                # Regulation term of Oja
-                rj_square = (model.output_activation**2).expand(-1, model.input_size)
-                oja_regulation = oja_alpha * rj_square * model.weights
-                # Oja's rule
-                model.weights = model.weights + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation            
-                # update init weights
-            init_weight = model.weights.detach().numpy()
-
-            # shrink shift and gain to init value
-            if has_boundary:
-                # passively narrow the boundaries
-                gain_ub = np.maximum(np.minimum(init_gain, gain_ub), theo_gain)
-                gain_lb = np.minimum(np.maximum(init_gain, gain_lb), theo_gain)
-                shift_ub = np.maximum(np.minimum(init_shift, shift_ub), theo_shift)
-                shift_lb = np.minimum(np.maximum(init_shift, shift_lb), theo_shift)
-                # pull gains and shifts back to into boundaries
-                init_gain = np.minimum(init_gain, gain_ub)
-                init_gain = np.maximum(init_gain, gain_lb)
-                init_shift = np.minimum(init_shift, shift_ub)
-                init_shift = np.maximum(init_shift, shift_lb)
+        # shrink shift and gain to init value
+        if has_boundary:
+            # passively narrow the boundaries
+            # gain_ub = np.maximum(np.minimum(init_gain, gain_ub), theo_gain)
+            # gain_lb = np.minimum(np.maximum(init_gain, gain_lb), theo_gain)
+            # shift_ub = np.maximum(np.minimum(init_shift, shift_ub), theo_shift)
+            # shift_lb = np.minimum(np.maximum(init_shift, shift_lb), theo_shift)
+            # pull gains and shifts back to into boundaries
+            init_gain = np.minimum(init_gain, gain_ub)
+            init_gain = np.maximum(init_gain, gain_lb)
+            init_shift = np.minimum(init_shift, shift_ub)
+            init_shift = np.maximum(init_shift, shift_lb)
 
         # print losses
         epoch_loss /= ndata
-        if epoch % 20 == 0:
+        if epoch % 10 == 0:
             print(f"Epoch: {epoch}, Loss: {epoch_loss}")
             saved_epoch.append(epoch)
             all_weights.append(init_weight)
 
         # record
-        losses.append(epoch_loss)
+        losses.append(epoch_loss.item())
         weight_sums.append(np.sum(init_weight))
         gain_changes.append(gain_change)
         shift_changes.append(shift_change)
-
-        # # termination
-        # if epoch > 0.8 * epochs and epoch_loss < 0.001 and gain_change < gc_thresh and shift_change < sc_thresh:
-        #     break
 
     # true epoch
     epochs = epoch + 1
     print(f"true epochs: {epochs}")
 
-    filename = "weights_abb05_conthebb.pkl"
+    filename = "weights_abb05_bphebb.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(model, f)
         pickle.dump(losses, f)
