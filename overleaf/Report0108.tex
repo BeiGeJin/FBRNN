@@ -14,58 +14,38 @@
 
 \maketitle
 
-\section*{Week 12/11}
+\section*{Week 01/08}
 
-\subsection*{Goals}
+\subsection*{Rethink on the Feedforward Network}
 
-\begin{itemize}
-    \item Transfer of learning from gains to synapses in Swinehart and Abbott (2005).
+% Last week, I demonstrated a way to transfer learning in gains and shifts to weights. However, it is based on switching hebbian learning on and off frequently: only if the loss for a particular data point is small, hebbian learning is performed. I also actively narrow the gains and shifts boundary. It turns out that it does not work well for RNN or adpatation to perturbation.
 
-    \item Transfer of learning from gains to synapses in RNN.
+Ideally, after doing backprop on gains and shifts, the response tuning curves of side neurons would go up and those of middle neurons would go down. Then, when hebbian learning is turning on, the weights of side neurons would get larger update than those of middle nuerons, resulting in a cosine-like weights. The next rounds of backprop would flatten the response tuning curves to maintain a low loss. In theory, this process transfers the learning in gains and shifts to weights. (We don't really need the active shrinkage of gains and shifts. In fact, if the shrinkage/flattening goes too fast, hebbian learning could not result in enough curvature in weights.)
 
-\end{itemize}
+In practice, the process could not transfer the learning completely, returning the gains and shifts to the initial values. It would converge to a state where the learning is partly in weights and partly in gains and shifts. 
 
-\newpage
+% fig
 
-\subsection*{Transfer of learning in Simple Feedforward Network}
+To understand this, I did an experiment where I keep the gains and shifts unchanged as initial and use backprop to find the "correct" weights. Then I turn on the hebbian learning, but the "correct" weights is not stable. In fact, it would converge to some weights whose loss is high. In other words, the "correct" weights is not a convergence point of hebbian learning.
 
-I realize the transfer of learning in the Simple Feedforward Network from Swinehart and Abbott (2005).
+% fig
 
-In the first 200 epochs of training, I use only SGD on gains and shifts to let the network quickly reduce its loss. Then, I start the Oja learning. But Oja learning only happens when the current loss is small enough.  Then, after another 100 epochs, I start the shrinkage of gains and shifts towards its initial value, where $g_i=3$ and $s_i=1$. The shrinkage is realized by imposing boundaries, both passively and actively. For example, if $g_i=5$ currently, the passive boundary for $g_i$ would be $[3,5]$, and an active shrinkage might happen to let the boundary become $[3,3+\gamma(5-3)]$. For now, the $\gamma=0.0001$.
+Mathemetically, the "correct" weights should meet some requirements to be the convergence point of hebbian learning.
 
-I find that Oja's learning more stable than normal Hebbian learning. What's more, the performance of the network depends heavily on choosing a good Oja's $\alpha$. In Oja's learning, $w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$, $||w||^2$ would converge to $1/\alpha$. To make the whole procedure work, there should exist a weight solution with $||w||^2=1/\alpha$ using initial gains and shifts. For now, $\alpha=12$.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/abb05_struc.png}
-    \label{fig:1}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/abb05_outputs_nosup.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/abb05_loss.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_rf.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_gc.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_sc.png}
-    \label{fig:1}
-\end{figure}
 
 \newpage
 
 \subsection*{Transfer of learning in RNN}
 
-I try to implement a similar procedure in training my RNN. But it is not performing well so far. Parameters need to be tuned.
+I implement the same training paradigm to train the RNN, i.e., first do backprop on gains and shifts and then turn on hebbian learning, to see how much of the learning could be transfered from gains and shifts to weights.
 
-The loss is converging at a certain value. This might be because the choice of Oja's $\alpha$ is not optimal. Also, hebbian learning for inhibitory synapses might also be necessary to reach a good balanced state. What's more, different from the Simple Feedforward Network, the input matrix and output matrix now in RNN is a random matrix. Maybe a carefully-designed matrix would be helpful.
+Some details: 16 nodes in recurrent layer; hebbian learning is done for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1s.
+
+For inhibitory synaptic plasticity, I didn't find a principle for firing rate. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{fig/sin_gn_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_ind.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_gc.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_sc.png}
     \label{fig:1}
 \end{figure}
 
