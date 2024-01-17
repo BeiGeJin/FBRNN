@@ -22,8 +22,10 @@ num_iters = int(input("Enter number of training iterations: "))
 # Defining Inputs and Targets
 ndata = 400
 time_points = np.arange(ndata).reshape(-1, 1)
-inputs = (1 + np.sin(time_points/60*np.pi))/2
-targets = (1 + np.sin((time_points+1)/60*np.pi))/2
+inputs = np.sin(time_points/60*np.pi)
+targets = np.sin((time_points+1)/60*np.pi)
+# inputs = (1 + np.sin(time_points/60*np.pi))/2
+# targets = (1 + np.sin((time_points+1)/60*np.pi))/2
 # inputs = 0.5 + np.sin(time_points/60*np.pi)/4
 # targets = 0.5 + np.sin((time_points+1)/60*np.pi)/4
 inputs = inputs.reshape(-1, 1)

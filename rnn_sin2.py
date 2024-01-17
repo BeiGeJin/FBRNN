@@ -246,8 +246,8 @@ class RNN:
             opt.zero_grad()
             loss_func = nn.MSELoss()
             simulated, activates = self.simulate(time, inputs, True)
-            loss_val = loss_func(simulated[100:,:], targets[100:,:])
-            # loss_val = loss_func(simulated, targets)
+            # loss_val = loss_func(simulated[100:,:], targets[100:,:])
+            loss_val = loss_func(simulated, targets)
             loss_val.backward()
             opt.step()
 
