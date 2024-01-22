@@ -20,12 +20,10 @@
 
 Ideally, after doing backprop on gains and shifts, the response tuning curves of side neurons would go up and those of middle neurons would go down. Then, when hebbian learning is turning on, the weights of side neurons would get larger update than those of middle nuerons. Plus, the normalization process would keep the sum of the weights as constant, resulting in a cosine-like weights. The changed weights would "exaggerate" the model outputs (e.g., even lower outputs in the middle of the curve). So, to reduce the loss, The next rounds of backprop would flatten the response tuning curves. In theory, this process transfers the learning in gains and shifts to weights. (We don't really need to actively shrink of gains and shifts by putting a shrinking boundaries. In fact, if the shrinkage/flattening goes too fast, hebbian learning could not result in enough curvature in weights.)
 
-% fig of drawing
-
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_struc.png}
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_paperresult.jpg}
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_paperresult_draw.jpg}
     \\
     \caption{The sturcture and the claimed result in the paper.}
 \end{figure}
@@ -55,9 +53,9 @@ To understand this, I did an experiment where I keep the gains and shifts unchan
     \caption{Changes after Hebbian learning on initial gains and correct weights.}
 \end{figure}
 
-Mathemetically, the convergence point of hebbian learning should meet some requirements.
-
-% math
+Mathemetically, the convergence point of hebbian learning should meet some requirements. Say, there are $n$ input nodes and $m$ inputs. For the $i$th input, the activation of input nodes are $a_{i1},\dots,a_{in}$. The target output is $y_i$. Let $w_j$ be the weight from $j$th input nodes to the output node. Denote matrix $A={a_{ij}}$, vector $y=(y_1,\dots,y_n)^T$, vector $w=(w_1,\dots,w_n)^T$. So the "correct" weights should satisfy: $$Aw=y$$
+The hebbian update before normalization to the weights would be $A^Ty$. If the weights are to remain the same, the hebbian update should be in the same direction as original weights: $$A^Ty=kw$$
+This leads us to $A^TAw=kw$, meaning that only if the "correct" weights are eigenvectors of $A^TA$ could hebbian learning converge.
 
 \section*{Perturbation in Feedforward Network}
 
@@ -65,7 +63,7 @@ After the network is trained, I try to add a persistent deviation in neurons' ac
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0122_abb05_perturb_loss.png} \\
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_loss.png} \\
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_gc.png} 
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_sc.png}
     \caption{Perturbation in feedforward netork.}
@@ -90,6 +88,14 @@ For inhibitory synaptic plasticity, I didn't find a principle applicable for fir
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_gc.png}
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_sc.png}\\
     \caption{Hebbian learning start after 1000 epoches.}
+\end{figure}
+
+Notice the grid-like weights after hebbian learning. It is quite different from the "correct" weights obtained from backprop on weights.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_wt_weight_matrix.png}
+    \caption{Weight matrix after backprop on weights.}
 \end{figure}
 
 \section*{Perturbation in RNN}
