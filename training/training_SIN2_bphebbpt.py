@@ -72,7 +72,7 @@ theo_gain = init_gain.copy()
 theo_shift = init_shift.copy()
 backprop_lr = 0.1
 loss_func = nn.MSELoss()
-hebbian_lr = 0
+hebbian_lr = 0.000001
 max_hebbian_lr = 0.000001
 hebbian_up_rate = max_hebbian_lr / 5000
 
@@ -103,7 +103,7 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
         print('backprop start!!!')
     
     # start hebbian learning
-    if epoch > 10000 and last_epoch_loss < 0.01 and has_hebbian == False:
+    if epoch > 1000 and last_epoch_loss < 0.001 and has_hebbian == False:
         has_hebbian = True
         print("hebbian start!!!")
     
