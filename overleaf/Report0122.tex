@@ -77,21 +77,24 @@ After the network is trained, I try to add a persistent deviation in neurons' ac
 
 I implement the same training paradigm to train the RNN, i.e., first do backprop on gains and shifts and then turn on hebbian learning, to see how much of the learning could be transfered from gains and shifts to weights.
 
-Some details: 32 nodes in recurrent layer; hebbian learning is performed for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1 and -1.
+Some details: 32 nodes in recurrent layer; hebbian learning is performed for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1 and -1; one epoch represents 1 period of sinwave with 120 timesteps.
 
-For inhibitory synaptic plasticity, I didn't find a principle for firing rate. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
+For inhibitory synaptic plasticity, I didn't find a principle applicable for firing rate network. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_output.png}
+    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_activations.png}
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_weight_matrix.png}\\
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_loss.png}
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_gc.png}
     \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_sc.png}\\
-    \caption{Hebbian learning start after 10 epoches.}
+    \caption{Hebbian learning start after 1000 epoches.}
 \end{figure}
 
 \section*{Perturbation in RNN}
+
+After the network is trained, I try to add a persistent deviation in the input after 50 epoches, The perturbation lasts for 2000, 5000, or 10000 epoches.
 
 \begin{figure}[H]
     \centering
@@ -100,6 +103,14 @@ For inhibitory synaptic plasticity, I didn't find a principle for firing rate. E
     \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_perturb_sc.png}
     \caption{Perturbation in RNN.}
 \end{figure}
+
+\section*{Thoughts}
+
+\begin{itemize}
+    \item Hebbian learning may not be able to transfer all the learning from gains and shifts to weights. Hebbian learning is after all unsupervised learning, especially in RNN, how could $n$ nodes instruct $n^2$ weights to learn?
+    \item How to change backprop to feedback control is another problem. As our RNN is trained with backprop and it is backprop that reaches a balance with hebbian learning, it is hard for feedback control to reach a similar balance. Primitive attempt reveals that hebbian learning would cause the output drift away under feedback control.
+    \item A plausible inhibitory synapses learning rule is yet to find. Maybe we should try on building the spiking neural network?
+\end{itemize}
 
 \newpage
 
