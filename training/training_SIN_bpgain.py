@@ -13,21 +13,22 @@ num_iters = int(input("Enter number of training iterations: "))
 num_nodes = int(input("Enter number of nodes: "))
 
 # Defining Inputs and Targets
-time_points = np.arange(300).reshape(-1, 1)
+ndata = 400
+time_points = np.arange(400).reshape(-1, 1)
 # inputs = (1 + np.sin(time_points/60*np.pi))/2
 # targets = (1 + np.sin((time_points+1)/60*np.pi))/2
 inputs = np.sin(time_points/60*np.pi)
 targets = np.sin((time_points+1)/60*np.pi)
 inputs = inputs.reshape(-1, 1)
 targets = targets.reshape(-1, 1)
-plt.plot(time_points, inputs)
-plt.plot(time_points, targets)
-plt.savefig("sin_input.png")
+# plt.plot(time_points, inputs)
+# plt.plot(time_points, targets)
+# plt.savefig("sin_input.png")
 
 # Defining constant
 time_constant = 100  # ms
 timestep = 10  # ms
-time = 3000  # ms
+time = ndata * timestep  # ms
 num_inputs = 1
 
 # Dale's Law

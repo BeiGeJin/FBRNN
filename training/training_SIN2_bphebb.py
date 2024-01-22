@@ -12,15 +12,16 @@ import torch
 import pickle
 
 SAVE_CHECKPOINT = False
-LOAD_CHECKPOINT = False
-checkpoint_epoch = 8000
+LOAD_CHECKPOINT = True
+checkpoint_epoch = 20000
 
-num_nodes = 128
+num_nodes = 32
 num_iters = int(input("Enter number of training iterations: "))
 # num_nodes = int(input("Enter number of nodes: "))
 
 # Defining Inputs and Targets
-time_points = np.arange(300).reshape(-1, 1)
+ndata = 400
+time_points = np.arange(ndata).reshape(-1, 1)
 inputs = (1 + np.sin(time_points/60*np.pi))/2
 targets = (1 + np.sin((time_points+1)/60*np.pi))/2
 inputs = inputs.reshape(-1, 1)
@@ -33,8 +34,10 @@ targets = targets.reshape(-1, 1)
 # Defining constant
 time_constant = 100  # ms
 timestep = 10  # ms
-time = 3000  # ms
+time = ndata * timestep  # ms
 num_inputs = 1
+hebb_alpha_ext = 415
+hebb_alpha_inh = 375
 
 # Dale's Law
 excite_perc = 0.5
@@ -46,13 +49,15 @@ weight_type = np.tile(node_type, num_nodes).reshape(num_nodes, -1)
 np.random.seed(1)
 connectivity_matrix = np.ones((num_nodes, num_nodes))
 weight_matrix = np.ones((num_nodes, num_nodes))
-# for i in range(num_nodes):
-#     weight_matrix[i, i] = 0
-#     connectivity_matrix[i, i] = 0
+for i in range(num_nodes):
+    weight_matrix[i, i] = 0
+    connectivity_matrix[i, i] = 0
+weight_matrix[weight_type > 0] *= hebb_alpha_ext / np.sum(weight_matrix[weight_type > 0])
+weight_matrix[weight_type < 0] *= hebb_alpha_inh / np.sum(weight_matrix[weight_type < 0])
 input_weight_matrix = np.random.normal(0, 1/np.sqrt(num_inputs), (num_inputs, num_nodes)) # useless
 init_activations = np.zeros((num_nodes, 1))
-init_gain = np.random.normal(0, 1/np.sqrt(num_inputs), (num_nodes, 1))
-init_shift = np.random.normal(0, 1/np.sqrt(num_inputs), (num_nodes, 1))
+init_gain = np.ones((num_nodes, 1))
+init_shift = np.zeros((num_nodes, 1))
 output_weight_matrix = np.ones((1, num_nodes))
 
 # Enforce Dale's Law
@@ -64,12 +69,9 @@ init_weight_matrix = weight_matrix.copy()
 # Training
 theo_gain = init_gain.copy()
 theo_shift = init_shift.copy()
-
 hebbian_lr = 0
-max_hebbian_lr = 0.00001
-hebbian_up_rate = max_hebbian_lr / 2000
-hebb_alpha_ext = 611
-hebb_alpha_inh = 618
+max_hebbian_lr = 0.000001
+hebbian_up_rate = max_hebbian_lr / 5000
 
 losses = []
 gain_changes = []
@@ -83,7 +85,7 @@ last_epoch_loss = 0
 
 # Load checkpoint
 if LOAD_CHECKPOINT:
-    with open('checkpoint/checkpoint.pkl', 'rb') as f:
+    with open('checkpoint/checkpoint_bphebb.pkl', 'rb') as f:
         init_gain = pickle.load(f)
         init_shift = pickle.load(f)
         weight_matrix = pickle.load(f)
@@ -105,7 +107,7 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
     shift_change = np.linalg.norm(init_shift - theo_shift, 2)
 
     # hebbian learning
-    if epoch > 10000 and last_epoch_loss < 0.005 and has_hebbian == False:
+    if epoch > 20000 and loss < 0.1 and has_hebbian == False:
         has_hebbian = True
         print("hebbian start!!!")
     if has_hebbian:
@@ -114,7 +116,7 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
             hebbian_lr += hebbian_up_rate
         # Calculate Hebbian weight updates
         activates_t = activates.T
-        hebbian_update = torch.matmul(activates_t[:,0:-1], activates_t[:,1::].T)
+        hebbian_update = torch.matmul(activates_t[:,100:-1], activates_t[:,101::].T)
         # hebbian_update = 0
         # for i in range(299):
         #     hebbian_update += activates_t[:,i].unsqueeze(1) * activates_t[:,i+1].unsqueeze(1).T
@@ -158,14 +160,13 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
     if epoch % 10 == 0:
             excite_weight_sum = np.sum(weight_matrix * (weight_type > 0))
             inhibit_weight_sum = np.sum(weight_matrix * (weight_type < 0))
-            print(f'Epoch {epoch+1}/{num_iters}, Loss: {loss}\n\
-                  GC:{gain_change},SC:{shift_change}, WC:{np.sum(weight_matrix)}\n\
+            print(f'Epoch {epoch+1}/{num_iters}, Loss: {loss}, GC:{gain_change},SC:{shift_change}, \n\
                   Excite weight sum: {excite_weight_sum}, Inhibit weight sum: {inhibit_weight_sum}')
             # print(network.gain.detach().numpy()[0:10])
     
     # Save checkpoint
-    if SAVE_CHECKPOINT and epoch == checkpoint_epoch:
-        with open('checkpoint/checkpoint.pkl', 'wb') as f:
+    if SAVE_CHECKPOINT and epoch + 1 == checkpoint_epoch:
+        with open('checkpoint/checkpoint_bphebb.pkl', 'wb') as f:
             pickle.dump(init_gain, f)
             pickle.dump(init_shift, f)
             pickle.dump(weight_matrix, f) 
@@ -185,7 +186,7 @@ net_weight_history['gain_changes'] = np.asarray(gain_changes).tolist()
 net_weight_history['shift_changes'] = np.asarray(shift_changes).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 
-if not os.path.isdir('../weights/SIN_bphebb_' + str(num_nodes) + '_nodes'):
-    os.mkdir('../weights/SIN_bphebb_' + str(num_nodes) + '_nodes')
-with open('../weights/SIN_bphebb_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+if not os.path.isdir('../weights/SIN2_bphebb_' + str(num_nodes) + '_nodes'):
+    os.mkdir('../weights/SIN2_bphebb_' + str(num_nodes) + '_nodes')
+with open('../weights/SIN2_bphebb_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
     json.dump(net_weight_history, f)

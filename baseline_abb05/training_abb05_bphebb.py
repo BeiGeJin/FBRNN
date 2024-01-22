@@ -14,7 +14,7 @@ class SimpleNeuralNetwork(nn.Module):
         self.input_size = input_size
         self.gain = torch.tensor(init_gain, dtype=torch.float32, requires_grad=True)
         self.shift = torch.tensor(init_shift, dtype=torch.float32, requires_grad=True)
-        self.weights = torch.tensor(init_weight, dtype=torch.float32)
+        self.weights = torch.tensor(init_weight, dtype=torch.float32, requires_grad=True)
         self.activation_func = nn.Sigmoid()
 
         # just to record

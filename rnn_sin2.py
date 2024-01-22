@@ -109,6 +109,14 @@ class RNN:
     def reset_activations(self):
         self.activation = torch.zeros((self.num_nodes, 1), dtype=torch.float32)
 
+    def forward(self, input):
+        # one step forward
+        c = self.timestep/self.time_const
+        self.layer_input = torch.matmul(self.weight_matrix, self.activation) + self.input_gaussian(input)
+        self.activation = (1 - c) * self.activation + c * self.activation_func(self.gain * (self.layer_input - self.shift))
+        output = self.output_nonlinearity(torch.matmul(self.output_weight_matrix, self.activation))
+        return output
+    
     def simulate(self, time, inputs, disable_progress_bar=False):
         '''
         Simulates timesteps of the network given by time.
@@ -246,8 +254,8 @@ class RNN:
             opt.zero_grad()
             loss_func = nn.MSELoss()
             simulated, activates = self.simulate(time, inputs, True)
-            # loss_val = loss_func(simulated[100:,:], targets[100:,:])
-            loss_val = loss_func(simulated, targets)
+            loss_val = loss_func(simulated[100:,:], targets[100:,:])
+            # loss_val = loss_func(simulated, targets)
             loss_val.backward()
             opt.step()
 
