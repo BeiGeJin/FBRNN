@@ -7,22 +7,21 @@
 \geometry{left=2.54cm, right=2.54cm, top=3.18cm, bottom=3.18cm}
 % \setlength{\parindent}{0pt}
 
-\title{Weekly Report}
+\title{Week Report 01/22}
 \author{Jerry Jin}
 
 \begin{document}
 
 \maketitle
 
-\section*{Week 01/22}
-
-\subsection*{Rethink on the Feedforward Network}
+\section*{Rethink of the Feedforward Network}
 
 % Last week, I demonstrated a way to transfer learning in gains and shifts to weights. However, it is based on switching hebbian learning on and off frequently: only if the loss for a particular data point is small, hebbian learning is performed. I also actively narrow the gains and shifts boundary. It turns out that it does not work well for RNN or adpatation to perturbation.
 
 Ideally, after doing backprop on gains and shifts, the response tuning curves of side neurons would go up and those of middle neurons would go down. Then, when hebbian learning is turning on, the weights of side neurons would get larger update than those of middle nuerons. Plus, the normalization process would keep the sum of the weights as constant, resulting in a cosine-like weights. The changed weights would "exaggerate" the model outputs (e.g., even lower outputs in the middle of the curve). So, to reduce the loss, The next rounds of backprop would flatten the response tuning curves. In theory, this process transfers the learning in gains and shifts to weights. (We don't really need to actively shrink of gains and shifts by putting a shrinking boundaries. In fact, if the shrinkage/flattening goes too fast, hebbian learning could not result in enough curvature in weights.)
 
 % fig of drawing
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_struc.png}
@@ -60,25 +59,31 @@ Mathemetically, the convergence point of hebbian learning should meet some requi
 
 % math
 
-\newpage
-\subsection*{Perturbation in Feedforward Network}
+\section*{Perturbation in Feedforward Network}
 
-
-\subsection*{Transfer of learning in RNN}
-
-I implement the same training paradigm to train the RNN, i.e., first do backprop on gains and shifts and then turn on hebbian learning, to see how much of the learning could be transfered from gains and shifts to weights.
-
-Some details: 16 nodes in recurrent layer; hebbian learning is done for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1s.
-
-For inhibitory synaptic plasticity, I didn't find a principle for firing rate. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
+After the network is trained, I try to add a persistent deviation in neurons' activation after 50 epoches, The perturbation lasts for 1000, 2000, or 5000 epoches. From the losses one could see, the network adapts to the perturbation quickly (with both backprop and hebbian learning), and after the perturbation is turned off, the loss goes up suddenly but gradually goes back to normal.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_loss.png} \\
-    \label{fig:1}
+    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0122_abb05_perturb_loss.png} \\
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_gc.png} 
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_sc.png}
+    \caption{Perturbation in feedforward netork.}
 \end{figure}
 
-123123123
+\newpage
+
+\section*{Transfer of learning in RNN}
+
+I implement the same training paradigm to train the RNN, i.e., first do backprop on gains and shifts and then turn on hebbian learning, to see how much of the learning could be transfered from gains and shifts to weights.
+
+Some details: 32 nodes in recurrent layer; hebbian learning is performed for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1 and -1.
+
+For inhibitory synaptic plasticity, I didn't find a principle for firing rate. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
+
+\section*{Perturbation in RNN}
+
+
 
 \newpage
 
