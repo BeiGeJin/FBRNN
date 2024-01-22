@@ -23,6 +23,13 @@
 Ideally, after doing backprop on gains and shifts, the response tuning curves of side neurons would go up and those of middle neurons would go down. Then, when hebbian learning is turning on, the weights of side neurons would get larger update than those of middle nuerons. Plus, the normalization process would keep the sum of the weights as constant, resulting in a cosine-like weights. The changed weights would "exaggerate" the model outputs (e.g., even lower outputs in the middle of the curve). So, to reduce the loss, The next rounds of backprop would flatten the response tuning curves. In theory, this process transfers the learning in gains and shifts to weights. (We don't really need to actively shrink of gains and shifts by putting a shrinking boundaries. In fact, if the shrinkage/flattening goes too fast, hebbian learning could not result in enough curvature in weights.)
 
 % fig of drawing
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_struc.png}
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_paperresult.jpg}
+    \\
+    \caption{The sturcture and the claimed result in the paper.}
+\end{figure}
 
 In practice, the process could not transfer the learning completely, returning the gains and shifts to the initial values. It would converge to a state where the learning is partly in weights and partly in gains and shifts. 
 
@@ -44,13 +51,14 @@ To understand this, I did an experiment where I keep the gains and shifts unchan
     \centering
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wt_weights.png}
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_output.png}
     \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_weights.png}
-    \caption{Hebbian learning start after 10 epoches.}
+    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_output.png}
+    \caption{Changes after Hebbian learning on initial gains and correct weights.}
 \end{figure}
 
-Mathemetically, the "correct" weights should meet some requirements to be the convergence point of hebbian learning.
+Mathemetically, the convergence point of hebbian learning should meet some requirements.
 
+% math
 
 \newpage
 
