@@ -12,7 +12,7 @@ import torch
 import pickle
 
 SAVE_CHECKPOINT = False
-LOAD_CHECKPOINT = True
+LOAD_CHECKPOINT = False
 checkpoint_epoch = 10000
 
 num_nodes = 32
@@ -72,7 +72,7 @@ theo_gain = init_gain.copy()
 theo_shift = init_shift.copy()
 backprop_lr = 0.1
 loss_func = nn.MSELoss()
-hebbian_lr = 0.000001
+hebbian_lr = 0
 max_hebbian_lr = 0.000001
 hebbian_up_rate = max_hebbian_lr / 5000
 
