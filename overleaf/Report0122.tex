@@ -81,9 +81,25 @@ Some details: 32 nodes in recurrent layer; hebbian learning is performed for eve
 
 For inhibitory synaptic plasticity, I didn't find a principle for firing rate. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_output.png}
+    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_weight_matrix.png}\\
+    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_loss.png}
+    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_gc.png}
+    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_sc.png}\\
+    \caption{Hebbian learning start after 10 epoches.}
+\end{figure}
+
 \section*{Perturbation in RNN}
 
-
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{analysis/fig/0122_SIN2_perturb_loss.png} \\
+    \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_perturb_gc.png} 
+    \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_perturb_sc.png}
+    \caption{Perturbation in RNN.}
+\end{figure}
 
 \newpage
 
