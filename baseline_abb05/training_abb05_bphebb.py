@@ -48,6 +48,7 @@ if __name__ == "__main__":
     init_gain = 3 * np.ones((input_size, 1))
     init_shift = 1 * np.ones((input_size, 1))
     init_weight = np.ones((1, input_size)) / input_size * 5.5
+    torch.manual_seed(42)
 
     # Data Generation, we will generate data points between 0 and 2*pi
     ndata = 200
