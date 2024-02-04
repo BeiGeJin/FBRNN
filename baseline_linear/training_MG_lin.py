@@ -1,14 +1,18 @@
-#Training Simple Perceptual Decision Making task
+# Linear RNN on MG, bp on weights
+# fitting whole MG, not skipping the chaotic period
 import numpy as np
 import sys
-from baseline_linear.rnn_lin import RNN
+from rnn_lin import RNN
 import json
 from tqdm import tqdm
 import os
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
-num_iters = int(input("Enter number of training iterations: "))
-num_nodes = int(input("Enter number of nodes: "))
+num_iters = 10000
+num_nodes = 32  # stablility of lqr
+# num_iters = int(input("Enter number of training iterations: "))
+# num_nodes = int(input("Enter number of nodes: "))
 
 # Defining Inputs and Targets
 def generate_MackeyGlass(ntimes, tau):
@@ -29,20 +33,19 @@ def generate_MackeyGlass(ntimes, tau):
     x = x_values[tau:]
     return x
 
-total_time_steps = 300
+total_time_steps = 600
 tau = 20
 MG_sequence = np.array(generate_MackeyGlass(total_time_steps+1, tau))
-inputs = MG_sequence[0:300].reshape(-1,1)
-targets = MG_sequence[1:301].reshape(-1,1)
-import matplotlib.pyplot as plt
-plt.plot(np.arange(300), inputs)
-plt.plot(np.arange(300), targets)
+inputs = MG_sequence[0:total_time_steps].reshape(-1,1)
+targets = MG_sequence[1:total_time_steps+1].reshape(-1,1)
+plt.plot(np.arange(total_time_steps), inputs)
+plt.plot(np.arange(total_time_steps), targets)
 plt.savefig("MG_input.png")
 
 # Defining constant
 time_constant = 100 #ms
 timestep = 10 #ms
-time = 3000 #ms
+time = total_time_steps * timestep #ms
 num_inputs = 1
 
 # Dale's Law
@@ -52,6 +55,7 @@ rng = np.random.default_rng(seed=42)
 node_type = rng.permutation([1]*excite_num + [-1]*(num_nodes-excite_num))
 
 # Initializing matrix
+np.random.seed(1)
 connectivity_matrix = np.ones((num_nodes, num_nodes))
 weight_matrix = np.random.normal(0, 1.2/np.sqrt(num_nodes), (num_nodes, num_nodes))
 for i in range(num_nodes):
@@ -77,7 +81,7 @@ print('Training...', flush = True)
 weight_history, losses = network.train(num_iters, targets, time, inputs = inputs,
                                        input_weight_matrix = input_weight_matrix, 
                                        hebbian_learning = False,
-                                       learning_rate = .005)
+                                       learning_rate = .005, fit_start=150)
 
 # net_weight_history['trained gain'] = np.asarray(weight_history[0]).tolist()
 # net_weight_history['trained shift'] = np.asarray(weight_history[1]).tolist()
@@ -88,7 +92,7 @@ net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['weight_posneg'] = np.asarray(network.weight_posneg).tolist()
 
-if not os.path.isdir('MacheyGlass_lin_' + str(num_nodes) + '_nodes'):
-    os.mkdir('MacheyGlass_lin_' + str(num_nodes) + '_nodes')
-with open('MacheyGlass_lin_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+if not os.path.isdir('MG_lin_' + str(num_nodes) + '_nodes'):
+    os.mkdir('MG_lin_' + str(num_nodes) + '_nodes')
+with open('MG_lin_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
     json.dump(net_weight_history, f)

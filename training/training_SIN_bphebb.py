@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 sys.path.append("..")
-from rnn_gn import RNN
+from rnn_basic import RNN
 import json
 from tqdm import tqdm
 import os
@@ -53,7 +53,7 @@ for i in range(num_nodes):
     weight_matrix[i, i] = 0
     connectivity_matrix[i, i] = 0
 input_weight_matrix = np.random.normal(0, 1/np.sqrt(num_inputs), (num_inputs, num_nodes))
-init_activations = np.zeros((num_nodes, 1))
+init_activation = np.zeros((num_nodes, 1))
 init_gain = np.random.normal(0, 1/np.sqrt(num_inputs), (num_nodes, 1))
 init_shift = np.random.normal(0, 1/np.sqrt(num_inputs), (num_nodes, 1))
 output_weight_matrix = np.random.normal(0, 1/np.sqrt(num_nodes), (1, num_nodes))
@@ -63,25 +63,28 @@ weight_matrix = np.abs(weight_matrix) * weight_type
 output_weight_matrix = np.abs(output_weight_matrix) * node_type
 init_weight_matrix = weight_matrix.copy()
 
-##########
+#######
 # Training
+#######
+
+# params
 theo_gain = init_gain.copy()
 theo_shift = init_shift.copy()
-
 hebbian_lr = 0
 max_hebbian_lr = 0.00001
 hebbian_up_rate = max_hebbian_lr / 2000
 hebb_alpha_ext = 611
 hebb_alpha_inh = 618
+has_backprop = True
+has_hebbian = False
+has_boundary = False
+start_pos = 0
 
+# record
 losses = []
 gain_changes = []
 shift_changes = []
 # weights = []
-start_pos = 0
-has_backprop = True
-has_hebbian = False
-has_boundary = False
 last_epoch_loss = 0
 
 # Load checkpoint
@@ -92,10 +95,11 @@ if LOAD_CHECKPOINT:
         weight_matrix = pickle.load(f)
     start_pos = checkpoint_epoch
 
+# start
 for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iters, position=0, leave=True):
 
     # Creating RNN
-    network = RNN(weight_matrix, connectivity_matrix, init_activations, init_gain, init_shift, input_weight_matrix, output_weight_matrix,
+    network = RNN(weight_matrix, connectivity_matrix, init_activation, init_gain, init_shift, input_weight_matrix, output_weight_matrix,
                 time_constant=time_constant, timestep=timestep)
     
     # backprop to update gains and shifts
@@ -187,7 +191,6 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['gain_changes'] = np.asarray(gain_changes).tolist()
 net_weight_history['shift_changes'] = np.asarray(shift_changes).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
-
 if not os.path.isdir('../weights/SIN_bphebb_' + str(num_nodes) + '_nodes'):
     os.mkdir('../weights/SIN_bphebb_' + str(num_nodes) + '_nodes')
 with open('../weights/SIN_bphebb_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:

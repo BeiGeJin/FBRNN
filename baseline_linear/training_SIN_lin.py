@@ -37,6 +37,7 @@ rng = np.random.default_rng(seed=42)
 node_type = rng.permutation([1]*excite_num + [-1]*(num_nodes-excite_num))
 
 # Initializing matrix
+np.random.seed(1)
 connectivity_matrix = np.ones((num_nodes, num_nodes))
 weight_matrix = np.random.normal(0, 1/np.sqrt(num_nodes), (num_nodes, num_nodes))
 for i in range(num_nodes):

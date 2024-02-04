@@ -1,4 +1,5 @@
 #Training Simple Perceptual Decision Making task
+# Todo
 import numpy as np
 import sys
 sys.path.append("..")

@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pickle
 
@@ -15,8 +16,8 @@ class SimpleNeuralNetwork(nn.Module):
         self.shift = torch.tensor(init_shift, dtype=torch.float32, requires_grad=True)
         self.weights = torch.tensor(init_weight, dtype=torch.float32, requires_grad=True)
         self.activation_func = nn.Sigmoid()
-        self.gainout = 6.67
-        self.shiftout = 1.035
+        self.gainout = 3
+        self.shiftout = 1
 
         # just to record
         self.init_gain = torch.tensor(3 * np.ones((self.input_size, 1)), dtype=torch.float32)
@@ -39,6 +40,23 @@ class SimpleNeuralNetwork(nn.Module):
         self.output_activation = x.clone()
         return x
 
+    def train_point(self, x, y):
+        # optimizer = optim.Adam([self.gain, self.shift], lr=0.05)
+        optimizer = optim.SGD([self.gain, self.shift], lr=0.2)
+        loss_func = nn.MSELoss()
+        optimizer.zero_grad()
+
+        # simulate output
+        output = self.forward(x).squeeze()
+        loss = 0.5 * loss_func(output, y)
+        # loss = loss + 0.0000001 * epoch * (torch.linalg.vector_norm(self.gain - self.init_gain) + torch.linalg.vector_norm(self.shift - self.init_shift))
+        
+        # gain modulation
+        loss.backward()
+        optimizer.step()
+        
+        return loss.detach().item()
+
 
 ## RUN
 if __name__ == "__main__":
@@ -55,11 +73,10 @@ if __name__ == "__main__":
     ys = torch.cos(xs)/4 + 0.5
 
     # training loop
-    epochs = 200
-    hebb_start_epoch = 20
+    epochs = 1000
     hebbian_lr = 0
-    max_hebbian_lr = 0.0001  # 0.001, 0.000001
-    hebbian_up_rate = max_hebbian_lr / 100
+    max_hebbian_lr = 0.03  # 0.001, 0.000001
+    hebbian_up_rate = max_hebbian_lr / 500
     hebb_alpha = 5.5
     backprop_lr = 0.2
     has_backprop = True
@@ -82,16 +99,20 @@ if __name__ == "__main__":
         shuffled_ys = ys[perm_idx]
         last_epoch_loss = epoch_loss
         epoch_loss = 0
+        hebbian_update = torch.zeros_like(torch.tensor(init_weight))
 
         # update hebbian learning rate, once per epoch
         if has_hebbian and hebbian_lr < max_hebbian_lr:
             hebbian_lr += hebbian_up_rate
 
+        # establish model
+        model = SimpleNeuralNetwork(input_size, init_gain, init_shift, init_weight)
+
         # start hebbian and shrinkage
-        if epoch > hebb_start_epoch and last_epoch_loss < 0.001 and has_hebbian == False:
+        if epoch > 10 and last_epoch_loss < 0.001 and has_hebbian == False:
             has_hebbian = True
             # has_backprop = False
-        if epoch > hebb_start_epoch and last_epoch_loss < 0.001 and has_boundary == False:
+        if epoch > 10 and last_epoch_loss < 0.001 and has_boundary == False:
             # create boundaries
             gain_ub = np.maximum(init_gain, theo_gain)
             gain_lb = np.minimum(init_gain, theo_gain)
@@ -101,57 +122,52 @@ if __name__ == "__main__":
             print("learning start!!!")
 
         # forward
-        for x, y in zip(shuffled_xs, shuffled_ys):     
-
-            # establish model
-            model = SimpleNeuralNetwork(input_size, init_gain, init_shift, init_weight)
-            # forward   
+        for x, y in zip(shuffled_xs, shuffled_ys):            
             actv_opl = model(x)
             output = actv_opl.squeeze()
             # Calculate loss
             loss_func = nn.MSELoss()
             loss = 0.5 * loss_func(output, y)
             epoch_loss += loss
+            # Calculate Hebbian weight updates
+            hebbian_update += model.output_activation * (model.input_activation).T
 
-            # backprop for gains and shifts
-            if has_backprop:
-                optimizer = optim.SGD([model.gain, model.shift], lr=backprop_lr)
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-            # update init gains and shifts
-            init_gain = model.gain.detach().numpy()
-            init_shift = model.shift.detach().numpy()
-            gain_change = np.linalg.norm(init_gain - theo_gain, 2)
-            shift_change = np.linalg.norm(init_shift - theo_shift, 2)
+        # backprop for gains and shifts
+        if has_backprop:
+            optimizer = optim.SGD([model.gain, model.shift], lr=backprop_lr)
+            epoch_loss.backward()
+            optimizer.step()
+        # update init gains and shifts
+        init_gain = model.gain.detach().numpy()
+        init_shift = model.shift.detach().numpy()
+        gain_change = np.linalg.norm(init_gain - theo_gain, 2)
+        shift_change = np.linalg.norm(init_shift - theo_shift, 2)
 
-            # hebbian learning for weights
-            if has_hebbian:
-                # Calculate Hebbian weight updates
-                hebbian_update = model.output_activation * (model.input_activation).T
-                # Apply Hebbian updates and normalize
-                model.weights = model.weights + hebbian_lr * hebbian_update
-                model.weights = model.weights / torch.sum(model.weights) * hebb_alpha
-            # update init weights
-            init_weight = model.weights.detach().numpy()
+        # hebbian learning for weights
+        if has_hebbian:
+            # Apply Hebbian updates and normalize
+            model.weights = model.weights + hebbian_lr * hebbian_update
+            model.weights = model.weights / torch.sum(model.weights) * hebb_alpha
+        # update init weights
+        init_weight = model.weights.detach().numpy()
 
-            # shrink shift and gain to init value
-            if has_boundary:
-                # passively narrow the boundaries
-                gain_ub = np.maximum(np.minimum(init_gain, gain_ub), theo_gain)
-                gain_lb = np.minimum(np.maximum(init_gain, gain_lb), theo_gain)
-                shift_ub = np.maximum(np.minimum(init_shift, shift_ub), theo_shift)
-                shift_lb = np.minimum(np.maximum(init_shift, shift_lb), theo_shift)
-                # pull gains and shifts back to into boundaries
-                init_gain = np.minimum(init_gain, gain_ub)
-                init_gain = np.maximum(init_gain, gain_lb)
-                init_shift = np.minimum(init_shift, shift_ub)
-                init_shift = np.maximum(init_shift, shift_lb)
+        # shrink shift and gain to init value
+        if has_boundary:
+            # passively narrow the boundaries
+            # gain_ub = np.maximum(np.minimum(init_gain, gain_ub), theo_gain)
+            # gain_lb = np.minimum(np.maximum(init_gain, gain_lb), theo_gain)
+            # shift_ub = np.maximum(np.minimum(init_shift, shift_ub), theo_shift)
+            # shift_lb = np.minimum(np.maximum(init_shift, shift_lb), theo_shift)
+            # pull gains and shifts back to into boundaries
+            init_gain = np.minimum(init_gain, gain_ub)
+            init_gain = np.maximum(init_gain, gain_lb)
+            init_shift = np.minimum(init_shift, shift_ub)
+            init_shift = np.maximum(init_shift, shift_lb)
 
         # print losses
         epoch_loss /= ndata
         if epoch % 10 == 0:
-            print(f"Epoch: {epoch}, Loss: {epoch_loss}, gain change: {gain_change}, shift change: {shift_change}")
+            print(f"Epoch: {epoch}, Loss: {epoch_loss}")
             saved_epoch.append(epoch)
             all_weights.append(init_weight)
 

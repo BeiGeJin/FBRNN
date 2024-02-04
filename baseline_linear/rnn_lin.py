@@ -202,7 +202,7 @@ class RNN:
 
     def l2_loss_func(self, targets, time, batch_size,
                      inputs, input_weight_matrix,
-                     error_mask=None, regularizer=None):
+                     error_mask=None, regularizer=None, fit_start=0):
         '''
         Computes loss function for the given weight matrix.
 
@@ -240,7 +240,6 @@ class RNN:
         for trial in range(batch_size):
 
             curr_targets = targets[trial]
-            curr_error_mask = error_mask[trial]
             curr_inputs = inputs[trial]
 
             self.reset_activations()
@@ -250,7 +249,7 @@ class RNN:
             simulated, activates = self.simulate(time, curr_inputs, input_weight_matrix, True)
             self.this_outputs = simulated.clone()  #
             self.this_activates = activates.clone()  #
-            l2_ = torch.sum((simulated - curr_targets)**2 * curr_error_mask)
+            l2_ = torch.sum((simulated[fit_start:] - curr_targets[fit_start:])**2)
             loss += 1/(self.num_outputs * num_timesteps) * l2_
 
         return loss/batch_size + regularizer(self.weight_matrix)
@@ -260,7 +259,8 @@ class RNN:
               hebbian_learning=True, hebbian_learning_rate=0.01, hebbian_decay=0.999,
               reservoir=False,
               regularizer=None,
-              error_mask=None, epochs=10, save=1):
+              error_mask=None, epochs=10, save=1,
+              fit_start=0):
         '''
         Trains the network using l2 loss. See other functions for the definitions of the parameters.
         For this function, instead of having one matrix as inputs/targets/error_mask, the user inputs
@@ -297,50 +297,9 @@ class RNN:
             opt.zero_grad()
             loss_val = self.l2_loss_func(batch_targets, time, batch_size,
                                          batch_inputs, input_weight_matrix,
-                                         batch_error_mask, regularizer)
-            # loss_val.backward(retain_graph=True)
+                                         batch_error_mask, regularizer, fit_start=fit_start)
             loss_val.backward()
             opt.step()
-
-            # Hebbian Learning
-            # TODO: average activation rather than single activation!
-            # if hebbian_learning == True:
-            #     with torch.no_grad():
-            #         hebbian_lr *= hebbian_decay
-
-            #         if reservoir == True:
-            #             # Calculate Hebbian weight updates
-            #             # outputs = self.output_nonlinearity(torch.matmul(self.output_weight_matrix, self.activation))
-            #             # hebbian_update = outputs * self.activation.T
-            #             mean_outputs = torch.mean(self.this_outputs, dim=0).unsqueeze(1)
-            #             mean_activates = torch.mean(self.this_activates, dim=0).unsqueeze(1)
-            #             # breakpoint()
-            #             hebbian_update = mean_outputs * mean_activates.T
-            #             hebbian_update = hebbian_update * self.node_type
-
-            #             # Regulation term of Oja
-            #             # rj_square = (outputs**2).expand(-1, self.num_nodes)
-            #             rj_square = (mean_outputs**2).expand(-1, self.num_nodes)
-            #             oja_regulation = oja_alpha * rj_square * self.output_weight_matrix * self.node_type
-
-            #             # Oja's rule
-            #             self.output_weight_matrix = self.output_weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
-
-            #         else:
-            #             # Calculate Hebbian weight updates
-            #             hebbian_update = self.activation * self.activation.T
-            #             hebbian_update = hebbian_update * self.weight_type * self.connectivity_matrix
-
-            #             # Regulation term of Oja
-            #             rj_square = (self.activation**2).expand(-1, self.num_nodes)
-            #             oja_regulation = oja_alpha * rj_square * self.weight_matrix * self.weight_type * self.connectivity_matrix
-
-            #             # # Apply Hebbian updates with a learning rate
-            #             # self.weight_matrix = self.weight_matrix + hebbian_lr * hebbian_update
-            #             # self.weight_matrix = self.weight_matrix / torch.max(torch.abs(self.weight_matrix)) # normalize with max
-
-            #             # Oja's rule
-            #             self.weight_matrix = self.weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
 
             if type(loss_val) == list:
                 losses.append(np.mean([l.detach().numpy() for l in loss_val]))
