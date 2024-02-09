@@ -7,7 +7,7 @@
 \geometry{left=2.54cm, right=2.54cm, top=3.18cm, bottom=3.18cm}
 % \setlength{\parindent}{0pt}
 
-\title{Week Reports}
+\title{Weekly Reports}
 \author{Jerry Jin}
 
 \begin{document}
@@ -75,9 +75,9 @@ Reading
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.45\textwidth]{fig/MG_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/MG_pred.png}
-    \caption{Mackey-Glass equation prediction with gradient descent only.}
+    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_output.png}
+    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_loss.png}
+    \caption{MG, SGD only.}
 \end{figure}
 
 Training the RNN with gain modulation while keeping the input matrix, internal matrix, and output matrix as random could approximate sine wave and Mackey-Glass equation, and in the meanwhile obeying the Dale's law.
@@ -93,14 +93,11 @@ For Oja's learning plus bp, it only works when it is with Adam.
 \subsection*{Goal}
 
 \noindent
-Main Task: Add Feedback control to the RNN, and test the performance under noise.
+Main Task: Feedback control to Linear RNN, and test the performance under noise.
 
 \begin{itemize}
     \item Add gaussian noise
-    \item Add Kalma filter and feedback control input
-    \item Test the trained RNN under square wave of noise
-    \item Explore balanced truncation, sparse coding
-    \item 80\% excitatory, 20\% inhibitory
+    \item Add Kalma filter and LQR control signal
 \end{itemize}
 
 \noindent
@@ -116,7 +113,7 @@ Reading
 
 \subsection*{Model}
 \begin{itemize}
-    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (32 nodes), 1 output layer (1D output). 
+    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (32 nodes) where 50\% are excitatory neurons (obeying Dale's law), 1 output layer (1D output). 
 
     \item Activation function: for now $y=x$ to make it a simple linear system.
     
@@ -130,7 +127,7 @@ Reading
     
     \item $x_t$ is the activation, $I_t$ is the input after input layer, $u_t$ is the control input, $w_d$ is the Gaussian processing noise following $N(0,W_d)$, $w_n$ is the Gaussian measurement noise following $N(0,W_n)$, $W$ is the weight matrix, $C$ is set to be identity matrix.
 
-    \item In the absense of control input and noise, use gradient descent to train the weight matrix $W$ so that $x_t$gives ideal outputs after output layer. We refer to such $x_t$ as reference activations $r_t$. Still follow the Dale's law to ensure a proportion of neurons to be excitatory (for now, still 50\%) and others to be inhibitory. 
+    \item In the absense of control input and noise, use backpropagation to train the weight matrix $W$ so that $x_t$ gives ideal outputs after output layer. We refer to such $x_t$ as reference activations $r_t$.
 
     \item Kalman filter: $\dot{\hat{x}_t} = (W-I)\hat{x}_t + I_{t} + u_{t} + K_f(y_t - C\hat{x}_t)$.
     
@@ -146,18 +143,18 @@ Reading
     \includegraphics[width=0.9\textwidth]{fig/lqg_structure.jpg}
 \end{figure}
 
-\subsection*{Temporary Noise}
+\subsection*{Persistent and Instant Perturbation}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{fig/sin_lin_rec.png}
-    \caption{Sine wave prediction with temporary noise.}
+    \includegraphics[width=\textwidth]{baseline_linear/fig/SIN_lin_noise.png}
+    \caption{SIN, linear RNN and LQG under perturbation.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{fig/MG_lin_rec.png}
-    \caption{Mackey-Glass equation prediction with temporary noise.}
+    \includegraphics[width=\textwidth]{baseline_linear/fig/MG_lin_noise.png}
+    \caption{MG, linear RNN and LQG under perturbation.}
 \end{figure}
 
 
@@ -194,7 +191,7 @@ Reading
 
 \subsection*{Model}
 \begin{itemize}
-    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (128 nodes) where 50\% is excitatory neurons (following Dale's law), 1 output layer (1D output).
+    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (128 nodes) where 50\% are excitatory neurons (obeying Dale's law), 1 output layer (1D output).
 
     \item Activation function: sigmoid function $f(y) = \frac{1}{1 + e^{-g(y-s)}}$, where $g$ is the gain and $s$ is the shift. 
     
