@@ -22,10 +22,10 @@
 Main Task: Establish a basic recurrent neural network!
 
 \begin{itemize}
-    \item Get the code from ankit\_kumar@lbl.gov
+    \item Get the code from Ankit
     \item Change the acitivation function to sigmoid, and change the synaptic modulation to gain modulation using back-propagation
     \item Simulate sin wave
-    \item Simulate dynamics (\url{https://en.wikipedia.org/wiki/Mackey-Glass_equations})
+    \item Simulate Mackey-Glass equation
     \item Obey Dale law
 \end{itemize}
 
@@ -47,13 +47,6 @@ Reading
     \item Activation function: sigmoid function $r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}}$, where $I_i$ is the input, $r_i$ is the output, $g_i$ is the gain, $s_i$ is the shift. 
     \item Initialization: input weights, internal weights, output weights, gains, and shifts are randomly initialized using Gaussian distribution. Initial activations are initialized as 0.
     \item Dale's law: specify a proportion of neurons to be excitatory (here 50\%) and others to be inhibitory. excitatory neurons can only have positive weights and inhibitory neurons can only have negative weights.
-    \item Training: 
-    \begin{enumerate}
-        \item Gradient descent to update gains and shifts only (Adam optimizer in PyTorch, learning\_rate=0.005).
-        \item Gradient descent on gains and shifts + basic Hebbian learning to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta r_i r_j$, normalize, $\eta=0.01$ with expnential decay).
-        \item Gradient descent on gains and shifts + Oja's learning rule to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$, only on weights from excitatory neuron, $\alpha = \sqrt{128}$, $\eta=0.01$ with expnential decay).
-        \item Gradient descent on gains and shifts + Oja's learning rule to update the output weights (idea of reservoir computing).
-    \end{enumerate}
     \item Tasks:
     \begin{enumerate}
         \item Predict sine wave: $f(t)=sin(at)$, $a=\frac{1}{60\pi}$. Input $f(t)$, train RNN to predict $f(t+1)$.
@@ -61,17 +54,23 @@ Reading
         
         $\gamma=0.1, \beta_0=0.2, n=10, \tau=20$. Input $g(t)$, train RNN to predict $g(t+1)$.
     \end{enumerate}
+    \item Training: 
+    \begin{enumerate}
+        \item Gradient descent to update gains and shifts only (SGD optimizer in PyTorch, learning rate=$0.2$).
+        % \item Gradient descent on gains and shifts + basic Hebbian learning to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta r_i r_j$, normalize, $\eta=0.01$ with expnential decay).
+        \item Gradient descent on gains and shifts + Oja's learning rule to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$, only on weights from excitatory neuron, $\alpha = \sqrt{128}$, $\eta=0.01$ with expnential decay).
+    \end{enumerate}
+
 
 \end{itemize}
 
-\subsection*{Gradient Descent Only}
+\subsection*{SGD on Gains and Shifts Only}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_pred.png}
-    \caption{Sine wave prediction with gradient descent only.}
-    \label{fig:1}
+    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_output.png}\\
+    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_loss.png}
+    \caption{SIN, SGD only.}
 \end{figure}
 
 \begin{figure}[H]
@@ -79,77 +78,11 @@ Reading
     \includegraphics[width=0.45\textwidth]{fig/MG_train.png}
     \includegraphics[width=0.45\textwidth]{fig/MG_pred.png}
     \caption{Mackey-Glass equation prediction with gradient descent only.}
-    \label{fig:2}
 \end{figure}
 
 Training the RNN with gain modulation while keeping the input matrix, internal matrix, and output matrix as random could approximate sine wave and Mackey-Glass equation, and in the meanwhile obeying the Dale's law.
 
-\subsection*{Basic Hebbian Learning}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_hebb_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_hebb_pred.png}
-    \caption{Sine wave prediction with basic Hebbian learning.}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/MG_hebb_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/MG_hebb_pred.png}
-    \caption{Mackey-Glass equation prediction with basic Hebbian learning.}
-    \label{fig:3}
-\end{figure}
-
-Using Hebbian learning to update the internal matrix would make the network more unstable and harder to train. Instability is a general limitation of Hebbian learning. The Dale's law is also not guranteed.
-
-\subsection*{Oja's Learning Rule}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_pred.png}
-    \caption{Sine wave prediction with Oja's learning rule.}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/MG_oja_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/MG_oja_pred.png}
-    \caption{Mackey-Glass equation prediction with Oja's learning rule.}
-\end{figure}
-
-Oja's learning rule is a better version of Hebbian learning. It introduces a regularization term to normalize the vector using only local information. The performance is comparable with only gradient descent and better than basic Hebbian learning.
-
-\subsection*{Reservoir Computing}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_liquid_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_liquid_pred.png}
-    \caption{Sine wave prediction with Oja's learning rule on output weights.}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/MG_liquid_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/MG_liquid_pred.png}
-    \caption{Mackey-Glass equation prediction with Oja's learning rule on output weights.}
-\end{figure}
-
-Keeping the internal weights random while using Oja's learning rule to update the output weights could also achieve comparable performance.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/sin_loss_compare.png}
-     \caption{Loss comparison in sine wave prediction.}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/MG_loss_compare.png}
-    \caption{Loss comparison in Mackey-Glass equation prediction.}
-\end{figure}
+For Oja's learning plus bp, it only works when it is with Adam.
 
 \newpage
 
@@ -312,44 +245,13 @@ Reading
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{fig/sin_oja_lqg.pdf}
+    \includegraphics[width=\textwidth]{analysis/fig/1113_SIN_lqg.png}
     \caption{Sine wave prediction with periodic noise, without ongoing Oja learning.}
-    \label{fig:1}
 \end{figure}
 
 \newpage
 
 \subsection*{Sine Wave with Onging Oja Learning}
-
-$w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{fig/sin_oja_lqg_learn.pdf}
-    \includegraphics[width=1\textwidth]{fig/sin_oja_lqg_learn_umean.pdf}
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_lqg_learn_umean_period.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_lqg_learn_weightsum.png}
-    \caption{Sine wave prediction with periodic noise and ongoing Oja learning.}
-    \label{fig:2}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{fig/temp5.png}
-    \includegraphics[width=1\textwidth]{fig/temp6.png}
-    \includegraphics[width=0.5\textwidth]{fig/temp4.png}
-    \caption{Sine wave prediction with ongoing Oja learning, without noise, $\alpha=\sqrt{n}$ where $n$ is number of nodes.}
-    \label{fig:3}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{fig/temp1.png}
-    \includegraphics[width=1\textwidth]{fig/temp2.png}
-    \includegraphics[width=0.5\textwidth]{fig/temp3.png}
-    \caption{Sine wave prediction with ongoing Oja learning, without noise, $\alpha=\sqrt{n}/2$ where $n$ is number of nodes.}
-    \label{fig:3}
-\end{figure}
 
 Oja learning can't ensure a steady performance without noise. The effect of Oja learning is closely related with $\alpha$. When $\alpha$ is large, the regulation term is large, the sum of weights go down making the output go up. When $\alpha$ is small, the regulation term is small, the sum of weights go up making the output go down. Need to investigate how hebbian-like learning could perform stable performance under no error and compensate performance when error occurs.
 
@@ -373,7 +275,7 @@ Extreme values in control signal might because of extremely small values when so
 
 %%%%%%%%
 
-\section*{Week 11/27}
+\section*{Week 11/13 - 11/27}
 
 \subsection*{Goal}
 
@@ -433,25 +335,7 @@ But training this neural network requires back propagation. Also it would substi
 
 To explore transfer of learning, I first explore the gains and weights during the initial training (no perturbation). However, it seems that gains are not converging. (By reflection it might be because of Adam optimizer. Shall try SGD later.) Gain change represents the distance between current gains and initial gains. Weight sum represents sum of weights.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_gainchange.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/sin_oja_weightsum.png}
-    \label{fig:1}
-\end{figure}
-
 I also try to replicate the simple neural network in Swinehart and Abbott (2005), using SGD and Hebbian learning. But it seems that the learning in gains doesn't completely transfer into the weights.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/abb05_struc.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/abb05_outputs1.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_loss1.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/abb05_gc1.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_ws1.png}
-    \label{fig:1}
-\end{figure}
 
 \newpage
 
