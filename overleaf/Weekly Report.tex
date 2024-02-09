@@ -118,7 +118,7 @@ Reading
 \begin{itemize}
     \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (32 nodes), 1 output layer (1D output). 
 
-    \item Activation function: for now $y=x$ to make it a simple linear system. Need to think how to linearize a sigmoid function. 
+    \item Activation function: for now $y=x$ to make it a simple linear system.
     
     \item Equations: 
     \begin{eqnarray}
@@ -136,7 +136,7 @@ Reading
     
     \item LQR: $u_t = -K(\hat{x}_t - r_t)$, to minimize $\int x^TQx + u^TRu \,dt$.
 
-    \item For sine wave prediction, $Q = I$, $R = 0.01I$, $W_d = 0.1I$, $W_n = 0.01I$. For Mackey-Glass equation prediction, $Q = I$, $R = 20I$, $W_d = 0.1I$, $W_n = 0.05I$. These choices, as well as the number of nodes, may influence convergence.
+    \item For SIN, $Q = I$, $R = 0.01I$, $W_d = 0.01I$, $W_n = 0.001I$. For MG, $Q = I$, $R = 0.1I$, $W_d = 0.001I$, $W_n = 0.0001I$. These choices, as well as the number of nodes, may influence convergence.
 
 \end{itemize}
 
@@ -152,39 +152,14 @@ Reading
     \centering
     \includegraphics[width=0.9\textwidth]{fig/sin_lin_rec.png}
     \caption{Sine wave prediction with temporary noise.}
-    \label{fig:1}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{fig/MG_lin_rec.png}
     \caption{Mackey-Glass equation prediction with temporary noise.}
-    \label{fig:2}
 \end{figure}
 
-\subsection*{Persistent Noise}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{fig/sin_lin_pers.png}
-    \caption{Sine wave prediction with persistent noise.}
-    \label{fig:1}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{fig/MG_lin_pers.png}
-    \caption{Mackey-Glass equation prediction with persistent noise.}
-    \label{fig:2}
-\end{figure}
-
-\subsection*{Next Steps}
-
-\begin{itemize}
-    \item Find ways to linearize the model with sigmoid activation function. Or using non-linear regulators.
-    \item Investigate balanced truncation, sparse coding, and balanced regime.
-    \item Explore in what situation the output would diverge.
-\end{itemize}
 
 \newpage
 
@@ -219,7 +194,7 @@ Reading
 
 \subsection*{Model}
 \begin{itemize}
-    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (60 nodes) where 80\% is excitatory neurons (following Dale's law), 1 output layer (1D output). 
+    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (128 nodes) where 50\% is excitatory neurons (following Dale's law), 1 output layer (1D output).
 
     \item Activation function: sigmoid function $f(y) = \frac{1}{1 + e^{-g(y-s)}}$, where $g$ is the gain and $s$ is the shift. 
     
@@ -233,11 +208,11 @@ Reading
     
     $x_t$ is the activation, $I_t$ is the input after input layer, $u_t$ is the control input, $w_d$ is the Gaussian processing noise following $N(0,W_d)$, $w_n$ is the Gaussian measurement noise following $N(0,W_n)$, $W$ is the weight matrix, $C$ is set to be identity matrix.
 
-    \item Training: in the absense of control input and noise, use gradient descent and oja learning to train the gains and shifts so that $x_t$ gives ideal outputs after output layer.
+    \item Training: Only SGD on gains and shifts. The same model as Week 10/1-10/16.
 
     \item Feedback control: extended Kalman filter and nonlinear LQR. The basic idea is to use the Jacobian matrix of $f$ at given $x_t$ to approximate linear system.
     
-    \item $Q = I$, $R = 0.01I$, $W_d = 0.001I$, $W_n = 0.001I$.
+    \item For both SIN and MG, $Q = 10I$, $R = 0.01I$, $W_d = 0.001I$, $W_n = 0.001I$.
 
 \end{itemize}
 
