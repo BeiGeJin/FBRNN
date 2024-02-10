@@ -82,7 +82,9 @@ Reading
 
 Training the RNN with gain modulation while keeping the input matrix, internal matrix, and output matrix as random could approximate sine wave and Mackey-Glass equation, and in the meanwhile obeying the Dale's law.
 
-For Oja's learning plus bp, it only works when it is with Adam.
+\subsection*{SGD on Gains and Shifts with Oja's Learning}
+
+For Oja's learning plus gradient descent, it only works when it is with Adam optimizer, not the normal SGD optimizer.
 
 \newpage
 
@@ -140,7 +142,7 @@ Reading
 % structure plot!
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{fig/lqg_structure.jpg}
+    \includegraphics[width=0.9\textwidth]{baseline_linear/fig/lqg_structure.jpg}
 \end{figure}
 
 \subsection*{Persistent and Instant Perturbation}
@@ -148,13 +150,13 @@ Reading
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{baseline_linear/fig/SIN_lin_noise.png}
-    \caption{SIN, linear RNN and LQG under perturbation.}
+    \caption{SIN, linear RNN and LQG under perturbation, without onging hebbian learning.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{baseline_linear/fig/MG_lin_noise.png}
-    \caption{MG, linear RNN and LQG under perturbation.}
+    \caption{MG, linear RNN and LQG under perturbation, without onging hebbian learning.}
 \end{figure}
 
 
@@ -167,13 +169,12 @@ Reading
 \subsection*{Goal}
 
 \noindent
-Main Task: Feedback control in Non-linear system, and test Hebbian learning under rhythmatic noise.
+Main Task: Feedback control in non-linear system under periodic perturbation.
 
 \begin{itemize}
     \item Get extended kalman filter and non-linear LQR to make the gain modulation RNN work under feedback control
     \item Add instant noise onto sustained noise
-    \item Add Hebbian learning under noise
-    \item 80\% excitatory, 20\% inhibitory
+    \item Test Hebbian learning under noise
 \end{itemize}
 
 \noindent
@@ -193,12 +194,12 @@ Reading
 \begin{itemize}
     \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (128 nodes) where 50\% are excitatory neurons (obeying Dale's law), 1 output layer (1D output).
 
-    \item Activation function: sigmoid function $f(y) = \frac{1}{1 + e^{-g(y-s)}}$, where $g$ is the gain and $s$ is the shift. 
+    \item Activation function: sigmoid function $f(y, u) = \frac{1}{1 + e^{-(g + u)(y - s)}}$, where $y$ is the input activation, $u$ is the control input, $g$ is the gain, and $s$ is the shift. 
     
     \item Equations: 
     \begin{eqnarray}
     \nonumber
-    x_{t+1} = f(Wx_t + I_{t} + u_{t}) + w_d \\
+    x_{t+1} = f(Wx_t + I_{t}, u_{t}) + w_d \\
     \nonumber
     y_t = Cx_{t} + w_n
     \end{eqnarray}
@@ -213,35 +214,27 @@ Reading
 
 \end{itemize}
 
-\subsection*{Sine Wave}
+\newpage
+
+\subsection*{Periodic Perturbation}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{analysis/fig/1113_SIN_lqg.png}
-    \caption{Sine wave prediction with periodic noise, without ongoing Oja learning.}
+    \caption{SIN, RNN and LQG on gains under periodic noise, without onging hebbian learning.}
 \end{figure}
-
-\newpage
-
-\subsection*{Sine Wave with Onging Oja Learning}
-
-Oja learning can't ensure a steady performance without noise. The effect of Oja learning is closely related with $\alpha$. When $\alpha$ is large, the regulation term is large, the sum of weights go down making the output go up. When $\alpha$ is small, the regulation term is small, the sum of weights go up making the output go down. Need to investigate how hebbian-like learning could perform stable performance under no error and compensate performance when error occurs.
-
-\newpage
-
-\subsection*{Mackey-Glass Equation}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{fig/MG_oja_lqg.pdf}
-    \caption{Mackey-Glass Equation prediction with periodic noise, without ongoing Oja learning.}
-    \includegraphics[width=0.9\textwidth]{fig/MG_oja_lqg_learn.pdf}
-    \includegraphics[width=0.9\textwidth]{fig/MG_oja_lqg_umean.pdf}
-    \caption{Mackey-Glass Equation prediction with periodic noise and ongoing Oja learning.}
-    \label{fig:4}
+    \includegraphics[width=\textwidth]{analysis/fig/1113_MG_lqg.png}
+    \caption{MG, RNN and LQG on gains under periodic noise, without onging hebbian learning.}
 \end{figure}
 
-Extreme values in control signal might because of extremely small values when solving Jacobian matrix. May change a numerical way for solving Jacobian matrix.
+\newpage
+
+\subsection*{SIN with Onging Oja Learning}
+
+Oja learning can't ensure a steady performance without noise. The effect of Oja learning is closely related with $\alpha$. When $\alpha$ is large, the regulation term is large, the sum of weights go down making the output go up. When $\alpha$ is small, the regulation term is small, the sum of weights go up making the output go down. Need to investigate how hebbian-like learning could perform stable performance under no error and compensate performance when error occurs.
 
 \newpage
 
@@ -255,7 +248,6 @@ Extreme values in control signal might because of extremely small values when so
 Main Task: Adaptative gain modulation and feedback control. Learn the perturbation pattern and gradually transfer the learning to synaptic plasticity.
 
 \begin{itemize}
-    \item Implement feedback control on gain modulation.
     \item Predictive feedback control: learn to give a control input in advance to correct the periodic perturbation.
     \item Transfer of learning: using Oja learning to transfer the learning effect from gains to synaptic weights.
 \end{itemize}
@@ -270,24 +262,13 @@ Reading
 
 \newpage
 
-\subsection*{Feedback Control on Gain Modulation}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{fig/sin_oja_lqg_gain.png}
-    \includegraphics[width=1\textwidth]{fig/MG_oja_lqg_gain.png}
-    \label{fig:1}
-\end{figure}
-
-\newpage
-
 \subsection*{Predictive Feedback Control Framework}
 
 One possible framework that is able to predictively give control signal to correct periodic perturbation is to use another neural network with Q-learning.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{fig/qlearn_struc.jpg}
+    \includegraphics[width=0.8\textwidth]{analysis/fig/qlearn_struc.jpg}
     \label{fig:1}
 \end{figure}
 
@@ -313,7 +294,7 @@ I also try to replicate the simple neural network in Swinehart and Abbott (2005)
 
 %%%%%%%%
 
-\section*{Week 12/11}
+\section*{Week 11/27 - 01/22}
 
 \subsection*{Goal}
 
@@ -323,8 +304,9 @@ Main Task: Transfer of learning from gains to synapses.
 \begin{itemize}
     \item Find out how Swinehart and Abbott (2005) manage to do the transfer of learning
     \item Try hard decay on gain modulation magnitude
-    \item On RNN, try inhibitory synaptic plasticity
     \item Try persistent perturbation rather than periodic perturbation
+    \item Slowly grow the Hebbian learning rate, avoid abrupt change
+    \item On RNN, try inhibitory synaptic plasticity and get the transfer of learning work
 \end{itemize}
 
 \noindent
@@ -333,79 +315,14 @@ Reading
 \begin{itemize}
     \item Vogels, T. P., Sprekeler, H., Zenke, F., Clopath, C., \& Gerstner, W. (2011). Inhibitory Plasticity Balances Excitation and Inhibition in Sensory Pathways and Memory Networks. Science, 334(6062), 1569–1573.
     \item Vogels, T. P., Froemke, R. C., Doyon, N., Gilson, M., Haas, J. S., Liu, R., Maffei, A., Miller, P., Wierenga, C. J., Woodin, M. A., Zenke, F., \& Sprekeler, H. (2013). Inhibitory synaptic plasticity: Spike timing-dependence and putative network function. Frontiers in Neural Circuits, 7.
-\end{itemize}
-
-\newpage
-
-\subsection*{Transfer of learning in Simple Feedforward Network}
-
-I realize the transfer of learning in the Simple Feedforward Network from Swinehart and Abbott (2005).
-
-In the first 200 epochs of training, I use only SGD on gains and shifts to let the network quickly reduce its loss. Then, I start the Oja learning. But Oja learning only happens when the current loss is small enough.  Then, after another 100 epochs, I start the shrinkage of gains and shifts towards its initial value, where $g_i=3$ and $s_i=1$. The shrinkage is realized by imposing boundaries, both passively and actively. For example, if $g_i=5$ currently, the passive boundary for $g_i$ would be $[3,5]$, and an active shrinkage might happen to let the boundary become $[3,3+\gamma(5-3)]$. For now, the $\gamma=0.0001$.
-
-I find that Oja's learning more stable than normal Hebbian learning. What's more, the performance of the network depends heavily on choosing a good Oja's $\alpha$. In Oja's learning, $w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$, $||w||^2$ would converge to $1/\alpha$. To make the whole procedure work, there should exist a weight solution with $||w||^2=1/\alpha$ using initial gains and shifts. For now, $\alpha=12$.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/abb05_struc.png}
-    \label{fig:1}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{fig/abb05_outputs_nosup.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/abb05_loss.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_rf.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_gc.png}
-    \includegraphics[width=0.45\textwidth]{fig/abb05_sc.png}
-    \label{fig:1}
-\end{figure}
-
-\newpage
-
-\subsection*{Transfer of learning in RNN}
-
-I try to implement a similar procedure in training my RNN. But it is not performing well so far. Parameters need to be tuned.
-
-The loss is converging at a certain value. This might be because the choice of Oja's $\alpha$ is not optimal. Also, hebbian learning for inhibitory synapses might also be necessary to reach a good balanced state. What's more, different from the Simple Feedforward Network, the input matrix and output matrix now in RNN is a random matrix. Maybe a carefully-designed matrix would be helpful.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_train.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_ind.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_gc.png}
-    \includegraphics[width=0.45\textwidth]{fig/sin_gn_sc.png}
-    \label{fig:1}
-\end{figure}
-
-\newpage
-
-%%%%%%%%
-
-\section*{Week 01/22}
-
-\subsection*{Goal}
-
-\noindent
-Main Task: Transfer of learning from gains to synapses.
-
-\begin{itemize}
-    \item Slowly grow the Hebbian learning rate, avoid abrupt change
-    \item On RNN, try inhibitory synaptic plasticity and get the transfer of learning work
-    \item Try persistent perturbation rather than periodic perturbation
-\end{itemize}
-
-\noindent
-Reading
-
-\begin{itemize}
     \item Rozell, C., Johnson, D., Baraniuk, R., \& Olshausen, B. (2007). Locally Competitive Algorithms for Sparse Approximation. 2007 IEEE International Conference on Image Processing, IV-169-IV–172.
     \item Paul, A., Wagner, S., \& Das, A. (2022). Learning in Feedback-driven Recurrent Spiking Neural Networks using full-FORCE Training (arXiv:2205.13585). arXiv.
     \item Ogawa, S., Fumarola, F., \& Mazzucato, L. (2023). Multitasking via baseline control in recurrent neural networks. Proceedings of the National Academy of Sciences, 120(33), e2304394120.
 \end{itemize}
 
-\subsection*{Rethink of the Feedforward Network}
+\newpage
+
+\subsection*{Transfer of Learning in the Feedforward Network}
 
 % Last week, I demonstrated a way to transfer learning in gains and shifts to weights. However, it is based on switching hebbian learning on and off frequently: only if the loss for a particular data point is small, hebbian learning is performed. I also actively narrow the gains and shifts boundary. It turns out that it does not work well for RNN or adpatation to perturbation.
 
