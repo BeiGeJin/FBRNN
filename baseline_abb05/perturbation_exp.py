@@ -36,10 +36,10 @@ class PerturbNetwork():
         self.init_shift = model_rep.shift.detach().numpy()
         self.init_weight = model_rep.weights.detach().numpy()
 
-    def simulate(self, ndata=200):
+    def simulate(self, ndata=200, seed=0):
         # set seed
-        np.random.seed(42)
-        torch.manual_seed(42)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
 
         # data prep
         xs = torch.linspace(0, 2 * torch.pi, ndata)
@@ -180,6 +180,8 @@ class PerturbNetwork():
         return simu_losses, weight_sums, gain_changes, shift_changes, model
 
 # systematic differentiate the perturbation lasts
+iter_num = 10
+simu_epochs = 3000
 perturb_lasts_exp = np.arange(1,3.1,0.1)
 perturb_lasts = np.power(10, perturb_lasts_exp).astype(int)
 perturb_lasts =  np.unique(perturb_lasts.round(-1))
@@ -187,26 +189,29 @@ perturb_lasts = np.append(perturb_lasts, [1200, 1500, 2000])
 print(perturb_lasts)
 
 # record
+all_perturb_lasts = []
 all_simu_losses = []
 all_gain_changes = []
 all_shift_changes = []
 all_weight_sums = []
-simu_epochs = 3000
 
 # start
-for perturb_last in perturb_lasts:
-    print("Now Start ...", perturb_last)
-    simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_last=perturb_last, only_backprop_epoch=0)
-    simu_losses, weight_sums, gain_changes, shift_changes, model = simulator.simulate(ndata=200)
-    all_simu_losses.append(simu_losses)
-    all_gain_changes.append(gain_changes)
-    all_shift_changes.append(shift_changes)
-    all_weight_sums.append(weight_sums)
+for i in range(iter_num):
+    print("Now Iter ...", i)
+    for perturb_last in perturb_lasts:
+        print("Now Start ...", perturb_last)
+        simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_last=perturb_last, only_backprop_epoch=0)
+        simu_losses, weight_sums, gain_changes, shift_changes, model = simulator.simulate(ndata=200, seed=i)
+        all_perturb_lasts.append(perturb_last)
+        all_simu_losses.append(simu_losses)
+        all_gain_changes.append(gain_changes)
+        all_shift_changes.append(shift_changes)
+        all_weight_sums.append(weight_sums)
 
 # save the results
 filename = "perturbation_exp_result.pkl"
 with open(filename, 'wb') as f:
-    pickle.dump(perturb_lasts, f)
+    pickle.dump(all_perturb_lasts, f)
     pickle.dump(all_simu_losses, f)
     pickle.dump(all_gain_changes, f)
     pickle.dump(all_shift_changes, f)
