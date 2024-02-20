@@ -65,6 +65,7 @@ theo_gain = init_gain.copy()
 theo_shift = init_shift.copy()
 oja_alpha = np.sqrt(num_nodes)
 hebbian_lr = 0.01
+has_hebbian = False
 
 # record
 losses = []
@@ -79,23 +80,28 @@ for epoch in tqdm(range(num_iters)):
                 time_constant=time_constant, timestep=timestep)
     
     # backprop
-    loss, activations = network.train_epoch(targets, time, inputs, learning_rate=0.2, optimizer='SGD')
+    # loss, activations = network.train_epoch(targets, time, inputs, learning_rate=0.2)
+    loss, activations = network.train_epoch(targets, time, inputs, learning_rate=0.01, optimizer='Adam')
 
     # update init gain and shift
     init_gain = network.gain.detach().numpy()
     init_shift = network.shift.detach().numpy()
     gain_change = np.linalg.norm(init_gain - theo_gain, 2)
 
+    if epoch > 1000 and loss < 0.005 and has_hebbian == False:
+        has_hebbian = True
+        print("hebbian start!!!")
     # oja's learning
-    # Calculate Hebbian weight updates
-    mean_activates = torch.mean(activations, dim=0).unsqueeze(1)
-    hebbian_update = mean_activates * mean_activates.T
-    hebbian_update = hebbian_update * network.weight_type * network.connectivity_matrix
-    # Regulation term of Oja
-    rj_square = (mean_activates**2).expand(-1, network.num_nodes)
-    oja_regulation = oja_alpha * rj_square * network.weight_matrix * network.weight_type * network.connectivity_matrix
-    # Oja's rule
-    network.weight_matrix = network.weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
+    if has_hebbian:
+        # Calculate Hebbian weight updates
+        mean_activates = torch.mean(activations, dim=0).unsqueeze(1)
+        hebbian_update = mean_activates * mean_activates.T
+        hebbian_update = hebbian_update * network.weight_type * network.connectivity_matrix
+        # Regulation term of Oja
+        rj_square = (mean_activates**2).expand(-1, network.num_nodes)
+        oja_regulation = oja_alpha * rj_square * network.weight_matrix * network.weight_type * network.connectivity_matrix
+        # Oja's rule
+        network.weight_matrix = network.weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
     
     # update weight matrix
     weight_matrix = network.weight_matrix.detach().numpy()

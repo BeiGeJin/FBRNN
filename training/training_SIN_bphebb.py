@@ -12,7 +12,7 @@ import torch
 import pickle
 
 SAVE_CHECKPOINT = False
-LOAD_CHECKPOINT = True
+LOAD_CHECKPOINT = False
 checkpoint_epoch = 8000
 
 num_nodes = 128
@@ -105,6 +105,7 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
     # backprop to update gains and shifts
     if has_backprop:
         loss, activates = network.train_epoch(targets, time, inputs, learning_rate=0.2)
+        # loss, activates = network.train_epoch(targets, time, inputs, learning_rate=0.01, optimizer='Adam')
     # update init gains adn shifts
     init_gain = network.gain.detach().numpy()
     init_shift = network.shift.detach().numpy()
