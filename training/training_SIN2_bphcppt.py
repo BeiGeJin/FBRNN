@@ -230,7 +230,7 @@ net_weight_history['shift_changes'] = np.asarray(shift_changes).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 net_weight_history['init_activations'] = np.asarray(init_activations).tolist()
 
-if not os.path.isdir('../weights/SIN2_bphcppt_comp_' + str(num_nodes) + '_nodes'):
-    os.mkdir('../weights/SIN2_bphcppt_comp_' + str(num_nodes) + '_nodes')
-with open('../weights/SIN2_bphcppt_comp_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+if not os.path.isdir('../weights/SIN2_bphcppt_' + str(num_nodes) + '_nodes'):
+    os.mkdir('../weights/SIN2_bphcppt_' + str(num_nodes) + '_nodes')
+with open('../weights/SIN2_bphcppt_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
     json.dump(net_weight_history, f)
