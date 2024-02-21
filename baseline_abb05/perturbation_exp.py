@@ -14,7 +14,7 @@ with open('weights_abb05_bphebb.pkl', 'rb') as f:
 # define the simulator
 class PerturbNetwork():
      
-    def __init__(self, model_rep, simu_epochs=1500, perturb_start=50, perturb_last=500, perturb_amp=0.1, only_backprop_epoch=10,
+    def __init__(self, model_rep, simu_epochs=1500, perturb_start=50, perturb_last=500, perturb_amp=1, only_backprop_epoch=10,
                  backprop_lr=0.2, hebbian_lr=0.0001, hebb_alpha=5.5):
         # init params
         self.simu_epochs = simu_epochs
@@ -22,6 +22,7 @@ class PerturbNetwork():
         self.perturb_last = perturb_last
         self.perturb_amp = perturb_amp
         self.only_backprop_epoch = only_backprop_epoch
+        self.bound_start_epoch = 20
         self.backprop_lr = backprop_lr
         self.hebbian_lr = hebbian_lr
         self.hebb_alpha = hebb_alpha
@@ -47,9 +48,11 @@ class PerturbNetwork():
     
         # define noise
         W = np.eye(self.input_size) * 0.001
-        x_noises = (np.random.multivariate_normal(mean=np.zeros(self.input_size), cov=W, size=self.simu_epochs)).T * 0
+        x_noises = (np.random.multivariate_normal(mean=np.zeros(self.input_size), cov=W, size=self.simu_epochs)).T
         x_noises = torch.tensor(x_noises, dtype=torch.float32)
         x_noises[:,self.perturb_start:self.perturb_start+self.perturb_last] += self.perturb_amp
+        x_noises[:,0:self.perturb_start] *= 0
+        x_noises[:,self.perturb_start+self.perturb_last:] *= 0
 
         # flags
         has_backprop = True  # always true
@@ -101,6 +104,7 @@ class PerturbNetwork():
             #     has_boundary = True
             #     print("perturb boundary created!!!")
             if not has_perturb and epoch > self.perturb_start + self.perturb_last + self.only_backprop_epoch and last_epoch_loss < 0.001 and has_boundary == False:
+            # if not has_perturb and epoch > self.perturb_start + self.perturb_last + self.bound_start_epoch and has_boundary == False:
                 gain_ub = np.maximum(self.init_gain, self.theo_gain)
                 gain_lb = np.minimum(self.init_gain, self.theo_gain)
                 shift_ub = np.maximum(self.init_shift, self.theo_shift)
@@ -118,7 +122,7 @@ class PerturbNetwork():
                 model = SimpleNeuralNetwork(self.input_size, self.init_gain, self.init_shift, self.init_weight)
                 # forward
                 inpu_ipl = model.gaussian_rf(x)
-                actv_ipl = model.activation_func(model.gain * (inpu_ipl - model.shift)) + (x_noises[:, epoch]).reshape(-1, 1)
+                actv_ipl = model.activation_func(model.gain * (inpu_ipl - model.shift) + (x_noises[:, epoch]).reshape(-1, 1))
                 model.input_activation = actv_ipl.clone()
                 inpu_opl = torch.matmul(model.weights, actv_ipl)
                 actv_opl = model.activation_func(model.gainout * (inpu_opl - model.shiftout))
@@ -168,8 +172,8 @@ class PerturbNetwork():
 
             # print losses
             epoch_loss /= ndata
-            if epoch % 50 == 0:
-                print(f"Epoch: {epoch}, Loss: {epoch_loss}")
+            # if epoch % 50 == 0:
+            #     print(f"Epoch: {epoch}, Loss: {epoch_loss}")
             
             # record
             simu_losses.append(epoch_loss.item())
@@ -180,9 +184,11 @@ class PerturbNetwork():
         return simu_losses, weight_sums, gain_changes, shift_changes, model
 
 # systematic differentiate the perturbation lasts
-iter_num = 10
+# iter_num = 10
+iter_num = 1
 simu_epochs = 3000
-perturb_lasts_exp = np.arange(1,3.1,0.1)
+# perturb_lasts_exp = np.arange(1,3.1,0.1)
+perturb_lasts_exp = np.array([2,3])
 perturb_lasts = np.power(10, perturb_lasts_exp).astype(int)
 perturb_lasts =  np.unique(perturb_lasts.round(-1))
 perturb_lasts = np.append(perturb_lasts, [1200, 1500, 2000])
@@ -197,8 +203,8 @@ all_weight_sums = []
 
 # start
 for i in range(iter_num):
-    print("Now Iter ...", i)
     for perturb_last in perturb_lasts:
+        print("Now Iter ...", i)
         print("Now Start ...", perturb_last)
         simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_last=perturb_last, only_backprop_epoch=0)
         simu_losses, weight_sums, gain_changes, shift_changes, model = simulator.simulate(ndata=200, seed=i)

@@ -47,7 +47,7 @@ class RNN:
     def __init__(self, weight_matrix, connectivity_matrix, init_activations, init_gains, init_shifts,
                  input_weight_matrix, output_weight_matrix, output_nonlinearity=lambda x: x,
                  time_constant=1, timestep=0.2, activation_func=nn.Sigmoid(),
-                 comm=None):
+                 comm=None, weight_type=None):
         '''
         Initializes an instance of the RNN class. 
 
@@ -90,7 +90,10 @@ class RNN:
             self.rank = comm.rank
 
         # Nodes type
-        self.weight_type = self.weight_matrix >= 0
+        if weight_type is None:
+            self.weight_type = self.weight_matrix >= 0
+        else:
+            self.weight_type = torch.tensor(weight_type) > 0
         self.node_type = self.weight_type.all(axis=0)
 
         # just to record

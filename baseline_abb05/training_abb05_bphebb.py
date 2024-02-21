@@ -56,16 +56,16 @@ if __name__ == "__main__":
     ys = torch.cos(xs)/4 + 0.5
 
     # training loop
-    epochs = 200
-    hebb_start_epoch = 20
+    epochs = 120
+    bound_start_epoch = 20
     hebbian_lr = 0
     max_hebbian_lr = 0.0001  # 0.001, 0.000001
-    hebbian_up_rate = max_hebbian_lr / 100
+    hebbian_up_rate = max_hebbian_lr / 80
     hebb_alpha = 5.5
     backprop_lr = 0.2
     has_backprop = True
     has_boundary = False
-    has_hebbian = False
+    has_hebbian = True
 
     losses = []
     gain_changes = []
@@ -89,17 +89,17 @@ if __name__ == "__main__":
             hebbian_lr += hebbian_up_rate
 
         # start hebbian and shrinkage
-        if epoch > hebb_start_epoch and last_epoch_loss < 0.001 and has_hebbian == False:
-            has_hebbian = True
-            # has_backprop = False
-        if epoch > hebb_start_epoch and last_epoch_loss < 0.001 and has_boundary == False:
+        # if epoch > hebb_start_epoch and last_epoch_loss < 0.001 and has_hebbian == False:
+        #     has_hebbian = True
+        #     # has_backprop = False
+        if epoch > bound_start_epoch and last_epoch_loss < 0.001 and has_boundary == False:
             # create boundaries
             gain_ub = np.maximum(init_gain, theo_gain)
             gain_lb = np.minimum(init_gain, theo_gain)
             shift_ub = np.maximum(init_shift, theo_shift)
             shift_lb = np.minimum(init_shift, theo_shift)
             has_boundary = True
-            print("learning start!!!")
+            print("boundary start!!!")
 
         # forward
         for x, y in zip(shuffled_xs, shuffled_ys):     
@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
         # print losses
         epoch_loss /= ndata
-        if epoch % 10 == 0:
+        if (epoch + 1) % 10 == 0:
             print(f"Epoch: {epoch}, Loss: {epoch_loss}, gain change: {gain_change}, shift change: {shift_change}")
             saved_epoch.append(epoch)
             all_weights.append(init_weight)
@@ -161,10 +161,6 @@ if __name__ == "__main__":
         weight_sums.append(np.sum(init_weight))
         gain_changes.append(gain_change)
         shift_changes.append(shift_change)
-
-    # true epoch
-    epochs = epoch + 1
-    print(f"true epochs: {epochs}")
 
     filename = "weights_abb05_bphebb.pkl"
     with open(filename, 'wb') as f:
