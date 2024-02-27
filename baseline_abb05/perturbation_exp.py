@@ -202,13 +202,14 @@ if __name__ == "__main__":
 
     # define hyper-parameters
     # iter_num = 10
-    iter_num = 1
-    simu_epochs = 3000
+    iter_num = 3
+    simu_epochs = 4000
     # perturb_lasts_exp = np.arange(1,3.1,0.1)
-    perturb_lasts_exp = np.array([2,3])
-    perturb_lasts = np.power(10, perturb_lasts_exp).astype(int)
-    perturb_lasts =  np.unique(perturb_lasts.round(-1))
-    perturb_lasts = np.append(perturb_lasts, [1200, 1500, 2000])
+    # perturb_lasts = np.power(10, perturb_lasts_exp).astype(int)
+    # perturb_lasts =  np.unique(perturb_lasts.round(-1))
+    # perturb_lasts = np.append(perturb_lasts, [1200, 1500, 2000])
+    perturb_lasts = [500, 1000, 1500, 2000, 2200, 2500, 2800, 3000, 3500]  # for inside sigmoid
+    perturb_amp = 1
     print(perturb_lasts)
 
     # record
@@ -216,21 +217,25 @@ if __name__ == "__main__":
     all_simu_losses = []
     all_gain_changes = []
     all_shift_changes = []
-    all_weight_sums = []
+    all_simu_weights = []
+    all_simu_gains = []
+    all_simu_shifts = []
 
     # start
     for i in range(iter_num):
         for perturb_last in perturb_lasts:
             print("Now Iter ...", i)
             print("Now Start ...", perturb_last)
-            simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_last=perturb_last, only_backprop_epoch=0)
-            simu_losses, weight_sums, gain_changes, shift_changes, model = simulator.simulate(ndata=200, seed=i)
+            simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_amp=perturb_amp, perturb_last=perturb_last, only_backprop_epoch=0)
+            simu_losses, gain_changes, shift_changes, simu_weights, simu_gains, simu_shifts, model_final = simulator.simulate(ndata=200, seed=i, perturb_in_sigmoid=True)
             all_perturb_lasts.append(perturb_last)
             all_simu_losses.append(simu_losses)
             all_gain_changes.append(gain_changes)
             all_shift_changes.append(shift_changes)
-            all_weight_sums.append(weight_sums)
-
+            all_simu_weights.append(simu_weights)
+            all_simu_gains.append(simu_gains)
+            all_simu_shifts.append(simu_shifts)
+    
     # save the results
     filename = "perturbation_exp_result.pkl"
     with open(filename, 'wb') as f:
@@ -238,4 +243,6 @@ if __name__ == "__main__":
         pickle.dump(all_simu_losses, f)
         pickle.dump(all_gain_changes, f)
         pickle.dump(all_shift_changes, f)
-        pickle.dump(all_weight_sums, f)
+        pickle.dump(all_simu_weights, f)
+        pickle.dump(all_simu_gains, f)
+        pickle.dump(all_simu_shifts, f)
