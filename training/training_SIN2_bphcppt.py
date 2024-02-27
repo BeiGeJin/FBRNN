@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch
 import pickle
 
-SAVE_CHECKPOINT = False
+SAVE_CHECKPOINT = True
 LOAD_CHECKPOINT = False
 checkpoint_epoch = 10000
 
@@ -80,6 +80,8 @@ losses = []
 gain_changes = []
 shift_changes = []
 weights = []
+gains = []
+shifts = []
 start_pos = 0
 has_backprop = False
 has_hebbian = False
@@ -206,6 +208,8 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
     
     if epoch % 100 == 0:
         weights.append(weight_matrix)
+        gains.append(init_gain)
+        shifts.append(init_shift)
     
     # Save checkpoint
     if SAVE_CHECKPOINT and epoch + 1 == checkpoint_epoch:
@@ -225,6 +229,8 @@ net_weight_history['input weights'] = np.asarray(input_weight_matrix).tolist()
 net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['weights'] = np.asarray(weights).tolist()
+net_weight_history['gains'] = np.asarray(gains).tolist()
+net_weight_history['shifts'] = np.asarray(shifts).tolist()
 net_weight_history['gain_changes'] = np.asarray(gain_changes).tolist()
 net_weight_history['shift_changes'] = np.asarray(shift_changes).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()

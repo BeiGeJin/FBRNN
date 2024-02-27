@@ -7,10 +7,6 @@ import pickle
 from training_abb05_bphebb import SimpleNeuralNetwork
 from tqdm import tqdm
 
-# load the pickle file
-with open('weights_abb05_bphebb.pkl', 'rb') as f:
-    model_rep = pickle.load(f)
-
 # define the simulator
 class PerturbNetwork():
      
@@ -37,7 +33,7 @@ class PerturbNetwork():
         self.init_shift = model_rep.shift.detach().numpy()
         self.init_weight = model_rep.weights.detach().numpy()
 
-    def simulate(self, ndata=200, seed=0):
+    def simulate(self, ndata=200, seed=0, perturb_in_sigmoid=False):
         # set seed
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -48,11 +44,17 @@ class PerturbNetwork():
     
         # define noise
         W = np.eye(self.input_size) * 0.001
-        x_noises = (np.random.multivariate_normal(mean=np.zeros(self.input_size), cov=W, size=self.simu_epochs)).T
-        x_noises = torch.tensor(x_noises, dtype=torch.float32)
-        x_noises[:,self.perturb_start:self.perturb_start+self.perturb_last] += self.perturb_amp
-        x_noises[:,0:self.perturb_start] *= 0
-        x_noises[:,self.perturb_start+self.perturb_last:] *= 0
+        self.x_noises = (np.random.multivariate_normal(mean=np.zeros(self.input_size), cov=W, size=self.simu_epochs)).T * 0
+        self.x_noises = torch.tensor(self.x_noises, dtype=torch.float32)
+        self.x_noises[:,self.perturb_start:self.perturb_start+self.perturb_last] += self.perturb_amp
+        self.x_noises[:,0:self.perturb_start] *= 0
+        self.x_noises[:,self.perturb_start+self.perturb_last:] *= 0
+
+        # create boundary
+        gain_ub = np.maximum(self.init_gain, self.theo_gain)
+        gain_lb = np.minimum(self.init_gain, self.theo_gain)
+        shift_ub = np.maximum(self.init_shift, self.theo_shift)
+        shift_lb = np.minimum(self.init_shift, self.theo_shift)
 
         # flags
         has_backprop = True  # always true
@@ -64,7 +66,9 @@ class PerturbNetwork():
         simu_losses = []
         gain_changes = []
         shift_changes = []
-        weight_sums = []
+        simu_weights = []
+        simu_gains = []
+        simu_shifts = []
         epoch_loss = 0
 
         for epoch in tqdm(range(self.simu_epochs)):
@@ -96,11 +100,11 @@ class PerturbNetwork():
             if not has_perturb and epoch > self.perturb_start + self.perturb_last + self.only_backprop_epoch and last_epoch_loss < 0.001 and has_hebbian == False:
                 has_hebbian = True
                 print("origin learning start!!!")
-            # if has_perturb and epoch > perturb_start + 10 and last_epoch_loss < 0.001 and has_boundary == False:
-            #     gain_ub = np.maximum(init_gain, theo_gain) + 0.1
-            #     gain_lb = np.minimum(init_gain, theo_gain) - 0.1
-            #     shift_ub = np.maximum(init_shift, theo_shift) + 0.1
-            #     shift_lb = np.minimum(init_shift, theo_shift) - 0.1
+            # if has_perturb and epoch > self.perturb_start + self.only_backprop_epoch and last_epoch_loss < 0.001 and has_boundary == False:
+            #     gain_ub = np.maximum(self.init_gain, self.theo_gain)
+            #     gain_lb = np.minimum(self.init_gain, self.theo_gain)
+            #     shift_ub = np.maximum(self.init_shift, self.theo_shift)
+            #     shift_lb = np.minimum(self.init_shift, self.theo_shift)
             #     has_boundary = True
             #     print("perturb boundary created!!!")
             if not has_perturb and epoch > self.perturb_start + self.perturb_last + self.only_backprop_epoch and last_epoch_loss < 0.001 and has_boundary == False:
@@ -122,7 +126,10 @@ class PerturbNetwork():
                 model = SimpleNeuralNetwork(self.input_size, self.init_gain, self.init_shift, self.init_weight)
                 # forward
                 inpu_ipl = model.gaussian_rf(x)
-                actv_ipl = model.activation_func(model.gain * (inpu_ipl - model.shift) + (x_noises[:, epoch]).reshape(-1, 1))
+                if perturb_in_sigmoid:
+                    actv_ipl = model.activation_func(model.gain * (inpu_ipl - model.shift) + (self.x_noises[:, epoch]).reshape(-1, 1))  # inside sigmoid
+                else:
+                    actv_ipl = model.activation_func(model.gain * (inpu_ipl - model.shift)) + (self.x_noises[:, epoch]).reshape(-1, 1)  # outside sigmoid
                 model.input_activation = actv_ipl.clone()
                 inpu_opl = torch.matmul(model.weights, actv_ipl)
                 actv_opl = model.activation_func(model.gainout * (inpu_opl - model.shiftout))
@@ -177,48 +184,58 @@ class PerturbNetwork():
             
             # record
             simu_losses.append(epoch_loss.item())
-            weight_sums.append(np.sum(self.init_weight))
             gain_changes.append(gain_change)
             shift_changes.append(shift_change)
+            simu_weights.append(self.init_weight.copy())
+            simu_gains.append(self.init_gain.copy())
+            simu_shifts.append(self.init_shift.copy())
 
-        return simu_losses, weight_sums, gain_changes, shift_changes, model
+        return simu_losses, gain_changes, shift_changes, simu_weights, simu_gains, simu_shifts, model
+
 
 # systematic differentiate the perturbation lasts
-# iter_num = 10
-iter_num = 1
-simu_epochs = 3000
-# perturb_lasts_exp = np.arange(1,3.1,0.1)
-perturb_lasts_exp = np.array([2,3])
-perturb_lasts = np.power(10, perturb_lasts_exp).astype(int)
-perturb_lasts =  np.unique(perturb_lasts.round(-1))
-perturb_lasts = np.append(perturb_lasts, [1200, 1500, 2000])
-print(perturb_lasts)
+if __name__ == "__main__":
 
-# record
-all_perturb_lasts = []
-all_simu_losses = []
-all_gain_changes = []
-all_shift_changes = []
-all_weight_sums = []
+    # load the pickle file
+    with open('weights_abb05_bphebb.pkl', 'rb') as f:
+        model_rep = pickle.load(f)
 
-# start
-for i in range(iter_num):
-    for perturb_last in perturb_lasts:
-        print("Now Iter ...", i)
-        print("Now Start ...", perturb_last)
-        simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_last=perturb_last, only_backprop_epoch=0)
-        simu_losses, weight_sums, gain_changes, shift_changes, model = simulator.simulate(ndata=200, seed=i)
-        all_perturb_lasts.append(perturb_last)
-        all_simu_losses.append(simu_losses)
-        all_gain_changes.append(gain_changes)
-        all_shift_changes.append(shift_changes)
-        all_weight_sums.append(weight_sums)
+    # define hyper-parameters
+    # iter_num = 10
+    iter_num = 1
+    simu_epochs = 3000
+    # perturb_lasts_exp = np.arange(1,3.1,0.1)
+    perturb_lasts_exp = np.array([2,3])
+    perturb_lasts = np.power(10, perturb_lasts_exp).astype(int)
+    perturb_lasts =  np.unique(perturb_lasts.round(-1))
+    perturb_lasts = np.append(perturb_lasts, [1200, 1500, 2000])
+    print(perturb_lasts)
 
-# save the results
-filename = "perturbation_exp_result.pkl"
-with open(filename, 'wb') as f:
-    pickle.dump(all_perturb_lasts, f)
-    pickle.dump(all_simu_losses, f)
-    pickle.dump(all_gain_changes, f)
-    pickle.dump(all_shift_changes, f)
-    pickle.dump(all_weight_sums, f)
+    # record
+    all_perturb_lasts = []
+    all_simu_losses = []
+    all_gain_changes = []
+    all_shift_changes = []
+    all_weight_sums = []
+
+    # start
+    for i in range(iter_num):
+        for perturb_last in perturb_lasts:
+            print("Now Iter ...", i)
+            print("Now Start ...", perturb_last)
+            simulator = PerturbNetwork(model_rep, simu_epochs=simu_epochs, perturb_last=perturb_last, only_backprop_epoch=0)
+            simu_losses, weight_sums, gain_changes, shift_changes, model = simulator.simulate(ndata=200, seed=i)
+            all_perturb_lasts.append(perturb_last)
+            all_simu_losses.append(simu_losses)
+            all_gain_changes.append(gain_changes)
+            all_shift_changes.append(shift_changes)
+            all_weight_sums.append(weight_sums)
+
+    # save the results
+    filename = "perturbation_exp_result.pkl"
+    with open(filename, 'wb') as f:
+        pickle.dump(all_perturb_lasts, f)
+        pickle.dump(all_simu_losses, f)
+        pickle.dump(all_gain_changes, f)
+        pickle.dump(all_shift_changes, f)
+        pickle.dump(all_weight_sums, f)

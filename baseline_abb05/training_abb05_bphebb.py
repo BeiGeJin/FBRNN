@@ -1,5 +1,6 @@
+# CORE TRAINING SCRIPT FOR ABB05
 # repitition of abb05, bp on gains and shifts, and then do hebbian learning to transfer learning to weights
-# bp first, then gradually turn on hebbian learning and narrowing
+# bp first, gradually turn on hebbian learning, passively narrowing boundaries for gains and shifts
 import torch
 import torch.nn as nn
 import torch.optim as optim

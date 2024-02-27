@@ -1,5 +1,5 @@
 # repitition of abb05, bp on gains and shifts, and then do hebbian learning to transfer learning to weights
-# bp first, then gradually turn on hebbian learning and narrowing
+# bp first, then turn off bp, gradually turn on hebbian learning and narrowing
 import torch
 import torch.nn as nn
 import torch.optim as optim

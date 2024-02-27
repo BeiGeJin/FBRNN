@@ -102,10 +102,11 @@ class RNN:
 
     def normal_pdf(self, theta):
         return torch.exp(-0.5 * (theta**2))
-
+    
     def input_gaussian(self, x):
         theta_is = torch.linspace(0, 1, int(self.num_nodes/2)).view(-1,1)
-        half_nodes_input = self.normal_pdf(x - theta_is)
+        # half_nodes_input = self.normal_pdf(x - theta_is)
+        half_nodes_input = self.normal_pdf(x-theta_is) + self.normal_pdf(x-theta_is+1) + self.normal_pdf(x-theta_is-1)  # circular
         all_nodes_input = torch.concat([half_nodes_input, half_nodes_input],dim=0)
         return all_nodes_input
     
@@ -117,7 +118,7 @@ class RNN:
         c = self.timestep/self.time_const
         self.layer_input = torch.matmul(self.weight_matrix, self.activation) + self.input_gaussian(input)
         self.activation = (1 - c) * self.activation + c * self.activation_func(self.gain * (self.layer_input - self.shift))
-        output = self.output_nonlinearity(torch.matmul(self.output_weight_matrix, self.activation))
+        output = self.output_nonlinearity(torch.matmul(self.output_weight_matrix, self.activation))[0]
         return output
     
     def simulate(self, time, inputs, disable_progress_bar=False):
@@ -139,109 +140,16 @@ class RNN:
             node. Has shape num_inputs x num_nodes. 
         '''
         num_timesteps = int(time//self.timestep)
-        compiled_activations = []
-        compiled_outputs = []
-        c = self.timestep/self.time_const
-
+        outputs = []
+        activations = []
         for t in tqdm(range(num_timesteps), position=0, leave=True, disable=disable_progress_bar):
             this_input = inputs[t].item()
-            self.layer_input = torch.matmul(self.weight_matrix, self.activation) + self.input_gaussian(this_input)
-            self.activation = (1 - c) * self.activation + c * self.activation_func(self.gain * (self.layer_input - self.shift))
-            outputs = self.output_nonlinearity(torch.matmul(self.output_weight_matrix, self.activation))
-            compiled_outputs.append(outputs[0])
-            compiled_activations.append(torch.squeeze(self.activation).clone())
-
-        compiled_outputs = torch.stack(compiled_outputs, dim=0)
-        compiled_activations = torch.stack(compiled_activations, dim=0)
-
-        return compiled_outputs, compiled_activations
-    """
-    def train(self, num_iters, targets, time, inputs, batch_size=1,
-              learning_rate=0.001, weight_decay=0.002,
-              hebbian_learning=True, hebbian_learning_rate=0.01, hebbian_decay=0.999):
-        '''
-        Trains the network using l2 loss. See other functions for the definitions of the parameters.
-        For this function, instead of having one matrix as inputs/targets/error_mask, the user inputs
-        a sequence of matrices. One for each training iteration. This allows for stochasticity in training.
-        The parameter save tells us how often to save the weights/loss of the network. A value of 10 would
-        result in the weights being saved every ten trials. 
-        '''
-        inputs = torch.tensor(inputs).float()
-        targets = torch.tensor(targets).float()
-
-        # opt = torch.optim.Adam([self.weight_matrix], lr=learning_rate)
-        opt = torch.optim.Adam([self.gain, self.shift], lr=learning_rate)
-        # opt = torch.optim.SGD([self.gain, self.shift], lr=learning_rate)
-        # hebbian_lr = hebbian_learning_rate
-        # oja_alpha = np.sqrt(self.num_nodes)
-
-        weight_history = []
-        losses = []
-        weight_sums = []
-        gain_changes = []
-
-        for iteration in tqdm(range(num_iters), position=0, leave=True):
-            # self.reset_activations()
-            opt.zero_grad()
-            loss_func = nn.MSELoss()
-            simulated, _ = self.simulate(time, inputs, True)
-            loss_val = loss_func(simulated, targets)
-            loss_val.backward()
-            opt.step()
-
-            # # Hebbian Learning
-            # # average activation rather than single activation!
-            # if hebbian_learning == True:
-            #     with torch.no_grad():
-            #         hebbian_lr *= hebbian_decay
-    
-            #         # # Calculate Hebbian weight updates
-            #         # hebbian_update = self.activation * self.activation.T
-            #         # hebbian_update = hebbian_update * self.weight_type * self.connectivity_matrix
-
-            #         # # Regulation term of Oja
-            #         # rj_square = (self.activation**2).expand(-1, self.num_nodes)
-            #         # oja_regulation = oja_alpha * rj_square * self.weight_matrix * self.weight_type * self.connectivity_matrix
-                    
-            #         # Calculate Hebbian weight updates
-            #         mean_activates = torch.mean(activates, dim=0).unsqueeze(1)
-            #         hebbian_update = mean_activates * mean_activates.T
-            #         hebbian_update = hebbian_update * self.weight_type * self.connectivity_matrix
-
-            #         # Regulation term of Oja
-            #         rj_square = (mean_activates**2).expand(-1, self.num_nodes)
-            #         oja_regulation = oja_alpha * rj_square * self.weight_matrix * self.weight_type * self.connectivity_matrix
-
-            #         # # Apply Hebbian updates with a learning rate
-            #         # self.weight_matrix = self.weight_matrix + hebbian_lr * hebbian_update
-            #         # self.weight_matrix = self.weight_matrix / torch.max(torch.abs(self.weight_matrix)) # normalize with max
-
-            #         # Oja's rule
-            #         self.weight_matrix = self.weight_matrix + hebbian_lr * hebbian_update - hebbian_lr * oja_regulation
-
-            # record losses
-            if type(loss_val) == list:
-                losses.append(np.mean([l.detach().numpy() for l in loss_val]))
-            else:
-                losses.append(loss_val.detach().numpy())
-            
-            if (iteration % 100 == 0) or (iteration == num_iters - 1):
-                print("The loss is: " + str(losses[-1]) + " at iteration " + str(iteration), flush=True)
-
-            # record weights sum and gain changes
-            weight_sums.append(np.sum(self.weight_matrix.detach().numpy()))
-            gain_changes.append(np.linalg.norm(self.gain.detach().numpy() - self.init_gain, 2))
-
-            # save weights at last
-            if iteration == num_iters - 1:
-                weight_history.append(self.gain.detach().numpy())
-                weight_history.append(self.shift.detach().numpy())
-                weight_history.append(self.weight_matrix.detach().numpy())
-                weight_history.append(weight_sums)
-                weight_history.append(gain_changes)
-
-        return weight_history, losses
-    """
+            output = self.forward(this_input)
+            outputs.append(output)
+            activations.append(torch.squeeze(self.activation).clone())
+        outputs = torch.stack(outputs, dim=0)
+        activations = torch.stack(activations, dim=0)
+        return outputs, activations
 
     def train_epoch(self, targets, time, inputs, learning_rate=0.001, mode='gain'):
             

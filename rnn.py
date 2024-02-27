@@ -10,7 +10,7 @@ import torch.nn as nn
 
 class RNN:
     '''
-    This RNN is used for initial training: training_bpgain, training_hebb, training_oja.
+    This RNN is not used in any training for now.
     The bad thing for this script is complexity.
     The good thing for this scipt is it contains hebbian learning within the class.
     Adam is very fast. But to be consistent with other codes, we use SGD here.
