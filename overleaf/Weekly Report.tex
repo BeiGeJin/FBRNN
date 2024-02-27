@@ -560,4 +560,25 @@ The weights now show a interesting shape. But still I might need to look for mor
     \centering
     \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix_overtime.png} 
 \end{figure}
+
+\section*{Week 02/20 - }
+
+\subsection*{Goal}
+
+\noindent
+\begin{itemize}
+    \item More systematic perturbation experiments in the feedforward network (changing amplitude).
+    \item Understand the hebbian learning in RNN.
+\end{itemize}
+
+\subsection*{Perturbation in Feedforward Network}
+
+I found some more subtle details about perturbation experiments in feedforward network.
+
+Firstly, there are two ways to add perturbation. One way is to add perturbation inside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, where $\epsilon_i$ is the perturbation), another way is to add perturbation outside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}} + \epsilon_i$). The former way would not change the range of $r_i$ (0 to 1), while the latter would change the range of $r_i$.
+
+Secondly, for experimenting on perturbation lasting, we expect that a longer perturbation would result in more difficulties in recovery. We observe the expected effect when perturbation is outside sigmoid with amplitude = 0.1 (see previous week). But this is a fortunate case where convergence happens quickly during perturbation. In other cases, for example, when the perturbation is too weak or the perturbation is inside sigmoid, during perturbation convergence might take more epoches. And if you stop perturbation before convergence, the effect would not be so stable.
+
+Thirdly, for experimenting on perturbation amplitude, we expect that a too large perturbation would result in saturation in sigmoid, which in turn causes no learning during perturbation and the recovery would be quick. We observe the basic effect for perturbation inside sigmoid (see previous week). However, there are other cases where perturbation is outside sigmoid, or there is partial learning during perturbation, or recovery fails, to be explored.
+
 \end{document}
