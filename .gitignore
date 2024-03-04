@@ -1,3 +1,4 @@
 weights/*
 **/*.json
+**/*.pkl
 __pycache__/
