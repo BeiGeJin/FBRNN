@@ -1,3 +1,5 @@
+import sys
+sys.path.append("../training")
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -197,7 +199,10 @@ class PerturbNetwork():
 if __name__ == "__main__":
 
     # load the pickle file
-    with open('weights_abb05_bphebb.pkl', 'rb') as f:
+    filedir = "../weights/"
+    filename = "weights_abb05_bphebb.pkl"
+    filepath = filedir + filename
+    with open(filepath, 'rb') as f:
         model_rep = pickle.load(f)
 
     # define hyper-parameters

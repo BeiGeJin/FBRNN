@@ -109,8 +109,10 @@ if __name__ == "__main__":
     epochs = epoch + 1
     print(f"true epochs: {epochs}")
 
+    filedir = "../weights/"
     filename = "weights_abb05_wt.pkl"
-    with open(filename, 'wb') as f:
+    filepath = filedir + filename
+    with open(filepath, 'wb') as f:
         pickle.dump(model, f)
         pickle.dump(losses, f)
         pickle.dump(weight_sums, f)

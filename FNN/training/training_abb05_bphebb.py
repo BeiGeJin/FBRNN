@@ -163,8 +163,10 @@ if __name__ == "__main__":
         gain_changes.append(gain_change)
         shift_changes.append(shift_change)
 
+    filedir = "../weights/"
     filename = "weights_abb05_bphebb.pkl"
-    with open(filename, 'wb') as f:
+    filepath = filedir + filename
+    with open(filepath, 'wb') as f:
         pickle.dump(model, f)
         pickle.dump(losses, f)
         pickle.dump(weight_sums, f)
