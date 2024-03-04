@@ -1,4 +1,6 @@
 # RNN on sine wave, no gain and shift, no sigmoid, only linear, just using bp update weight matrix, to test lqg
+import sys
+sys.path.append("../../model")
 import matplotlib.pyplot as plt
 import numpy as np
 from rnn_lin import RNN
@@ -77,7 +79,8 @@ net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['weight_posneg'] = np.asarray(network.weight_posneg).tolist()
 
-if not os.path.isdir('SIN_lin_' + str(num_nodes) + '_nodes'):
-    os.mkdir('SIN_lin_' + str(num_nodes) + '_nodes')
-with open('SIN_lin_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "SIN_lin_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)

@@ -1,5 +1,7 @@
 # Linear RNN on MG, bp on weights
 # fitting whole MG, not skipping the chaotic period
+import sys
+sys.path.append("../../model")
 import numpy as np
 import sys
 from rnn_lin import RNN
@@ -92,7 +94,8 @@ net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['weight_posneg'] = np.asarray(network.weight_posneg).tolist()
 
-if not os.path.isdir('MG_lin_' + str(num_nodes) + '_nodes'):
-    os.mkdir('MG_lin_' + str(num_nodes) + '_nodes')
-with open('MG_lin_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "MG_lin_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)
