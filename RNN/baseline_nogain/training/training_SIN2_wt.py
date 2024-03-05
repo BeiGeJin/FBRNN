@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-sys.path.append("..")
+sys.path.append("../../model")
 from rnn_sin2 import RNN
 import json
 from tqdm import tqdm
@@ -14,7 +14,7 @@ SAVE_CHECKPOINT = False
 LOAD_CHECKPOINT = False
 checkpoint_epoch = 8000
 
-num_nodes = 32
+num_nodes = 16
 num_iters = int(input("Enter number of training iterations: "))
 # num_nodes = int(input("Enter number of nodes: "))
 
@@ -25,10 +25,10 @@ inputs = (1 + np.sin(time_points/60*np.pi))/2
 targets = (1 + np.sin((time_points+1)/60*np.pi))/2
 inputs = inputs.reshape(-1, 1)
 targets = targets.reshape(-1, 1)
-plt.plot(time_points, inputs, label='input')
-plt.plot(time_points, targets, label='target')
-plt.legend()
-plt.savefig("sin_input.png")
+# plt.plot(time_points, inputs, label='input')
+# plt.plot(time_points, targets, label='target')
+# plt.legend()
+# plt.savefig("sin_input.png")
 
 # Defining constant
 time_constant = 100  # ms
@@ -86,9 +86,7 @@ for epoch in tqdm(range(start_pos, num_iters), initial=start_pos, total=num_iter
 
     # Creating RNN
     network = RNN(weight_matrix, connectivity_matrix, init_activations, init_gain, init_shift, input_weight_matrix, output_weight_matrix,
-                time_constant=time_constant, timestep=timestep, 
-                # output_nonlinearity=nn.Sigmoid()
-                )
+                time_constant=time_constant, timestep=timestep, weight_type=weight_type)
     
     # backprop to update gains and shifts
     if has_backprop:
@@ -132,7 +130,8 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 # net_weight_history['weights'] = np.asarray(weights).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 
-if not os.path.isdir('SIN2_wt_' + str(num_nodes) + '_nodes'):
-    os.mkdir('SIN2_wt_' + str(num_nodes) + '_nodes')
-with open('SIN2_wt_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "SIN2_wt_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)

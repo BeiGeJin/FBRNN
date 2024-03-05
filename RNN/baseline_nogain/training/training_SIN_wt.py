@@ -1,4 +1,6 @@
 # RNN on sine wave, using bp on weight matrix, enforce Dale's law
+import sys
+sys.path.append("../../model")
 import matplotlib.pyplot as plt
 import numpy as np
 from rnn_wt import RNN
@@ -100,7 +102,8 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 # net_weight_history['gain_changes'] = np.asarray(weight_history[4]).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 
-if not os.path.isdir('SIN_wt_' + str(num_nodes) + '_nodes'):
-    os.mkdir('SIN_wt_' + str(num_nodes) + '_nodes')
-with open('SIN_wt_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "SIN_wt_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)

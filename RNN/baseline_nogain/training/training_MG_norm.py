@@ -1,6 +1,7 @@
 # training normal RNN which only update weight matrix, with basic sigmoid activation
 import numpy as np
 import sys
+sys.path.append("../../model")
 from rnn_norm import RNN
 import json
 from tqdm import tqdm
@@ -34,10 +35,10 @@ tau = 20
 MG_sequence = np.array(generate_MackeyGlass(total_time_steps+1, tau))
 inputs = MG_sequence[0:300].reshape(-1,1)
 targets = MG_sequence[1:301].reshape(-1,1)
-import matplotlib.pyplot as plt
-plt.plot(np.arange(300), inputs)
-plt.plot(np.arange(300), targets)
-plt.savefig("fig/MG_input.png")
+# import matplotlib.pyplot as plt
+# plt.plot(np.arange(300), inputs)
+# plt.plot(np.arange(300), targets)
+# plt.savefig("fig/MG_input.png")
 
 # Defining constant
 time_constant = 100 #ms
@@ -70,7 +71,9 @@ net_weight_history['connectivity matrix'] = np.asarray(connectivity_matrix).toli
 net_weight_history['input weights'] = np.asarray(input_weight_matrix).tolist()
 net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 
-if not os.path.isdir('MacheyGlass_norm_' + str(num_nodes) + '_nodes'):
-    os.mkdir('MacheyGlass_norm_' + str(num_nodes) + '_nodes')
-with open('MacheyGlass_norm_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+
+filedir = "../weights/"
+filename = "MG_norm_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)

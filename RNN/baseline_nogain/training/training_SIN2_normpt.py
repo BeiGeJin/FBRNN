@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-sys.path.append("..")
+sys.path.append("../../model")
 from rnn_sin2 import RNN
 import json
 from tqdm import tqdm
@@ -145,7 +145,8 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 net_weight_history['init_activations'] = np.asarray(init_activations).tolist()
 
-if not os.path.isdir('SIN2_normpt_' + str(num_nodes) + '_nodes'):
-    os.mkdir('SIN2_normpt_' + str(num_nodes) + '_nodes')
-with open('SIN2_normpt_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "SIN2_normpt_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)

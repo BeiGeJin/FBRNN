@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+sys.path.append("../../model")
 from rnn_norm import RNN
 import json
 from tqdm import tqdm
@@ -60,7 +61,8 @@ net_weight_history['connectivity matrix'] = np.asarray(connectivity_matrix).toli
 net_weight_history['input weights'] = np.asarray(input_weight_matrix).tolist()
 net_weight_history['output weights'] = np.asarray(output_weight_matrix).tolist()
 
-if not os.path.isdir('SIN_norm_' + str(num_nodes) + '_nodes'):
-    os.mkdir('SIN_norm_' + str(num_nodes) + '_nodes')
-with open('SIN_norm_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "SIN_norm_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)

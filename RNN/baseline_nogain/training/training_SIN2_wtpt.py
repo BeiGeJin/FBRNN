@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-sys.path.append("..")
+sys.path.append("../../model")
 from rnn_sin2 import RNN
 import json
 from tqdm import tqdm
@@ -11,7 +11,6 @@ import torch.nn as nn
 import torch
 import pickle
 
-file_name = 'SIN2_wtpt'
 num_nodes = 16
 num_iters = int(input("Enter number of training iterations: "))
 # num_nodes = int(input("Enter number of nodes: "))
@@ -149,7 +148,8 @@ net_weight_history['losses'] = np.asarray(losses).tolist()
 net_weight_history['init_weight'] = init_weight_matrix.tolist()
 net_weight_history['init_activations'] = np.asarray(init_activations).tolist()
 
-if not os.path.isdir(file_name + '_' + str(num_nodes) + '_nodes'):
-    os.mkdir(file_name + '_' + str(num_nodes) + '_nodes')
-with open(file_name + '_' + str(num_nodes) + '_nodes/weight_history.json', 'w') as f:
+filedir = "../weights/"
+filename = "SIN2_wtpt_" + str(num_nodes) + "_nodes.json"
+filepath = filedir + filename
+with open(filepath, 'w') as f:
     json.dump(net_weight_history, f)
