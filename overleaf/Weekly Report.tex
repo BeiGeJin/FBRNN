@@ -14,81 +14,160 @@
 
 \maketitle
 
-\section*{Week 10/1 - 10/16}
+\section*{Week 02/20 - }
 
 \subsection*{Goal}
 
 \noindent
-Main Task: Establish a basic recurrent neural network!
+\begin{itemize}
+    \item More systematic perturbation experiments in the feedforward network (changing amplitude).
+    \item Understand the hebbian learning in RNN.
+\end{itemize}
+
+\subsection*{Perturbation in Feedforward Network}
+
+I found some more subtle details about perturbation experiments in feedforward network.
+
+Firstly, there are two ways to add perturbation. One way is to add perturbation inside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, where $\epsilon_i$ is the perturbation), another way is to add perturbation outside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}} + \epsilon_i$). The former way would not change the range of $r_i$ (0 to 1), while the latter would change the range of $r_i$.
+
+Secondly, for experimenting on perturbation lasting, we expect that a longer perturbation would result in more difficulties in recovery. We observe the expected effect when perturbation is outside sigmoid with amplitude = 0.1 (see previous week). But this is a fortunate case where convergence happens quickly during perturbation. In other cases, for example, when the perturbation is too weak or the perturbation is inside sigmoid, during perturbation convergence might take more epoches. And if you stop perturbation before convergence, the effect would not be so stable.
+
+Thirdly, for experimenting on perturbation amplitude, we expect that a too large perturbation would result in saturation in sigmoid, which in turn causes no learning during perturbation and the recovery would be quick. We observe the basic effect for perturbation inside sigmoid (see previous week). However, there are other cases where perturbation is outside sigmoid, or there is partial learning during perturbation, or recovery fails, to be explored.
+
+%%%%%%%%
+
+\section*{Week 01/22 - 02/20}
+
+\subsection*{Goal}
+
+\noindent
+Main Task: Transfer of learning from gains to synapses.
 
 \begin{itemize}
-    \item Get the code from Ankit
-    \item Change the acitivation function to sigmoid, and change the synaptic modulation to gain modulation using back-propagation
-    \item Simulate sin wave
-    \item Simulate Mackey-Glass equation
-    \item Obey Dale law
+    \item Get the transfer of learning feedforward network work. Try to look at the scale of weights.
+    \item Systematically investigate the adaptation to perturbation.
+    \item Think of a better way to implement hebbian learning in RNN, especially inhibitory hebbian learning.
 \end{itemize}
 
 \noindent
 Reading
 
 \begin{itemize}
-    \item Sussillo, D., \& Abbott, L. F. (2009). Generating Coherent Patterns of Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557. \url{https://doi.org/10.1016/j.neuron.2009.07.018}
-    \item Nicola, W., \& Clopath, C. (2017). Supervised learning in spiking neural networks with FORCE training. Nature Communications, 8(1), 2208. \url{https://doi.org/10.1038/s41467-017-01827-3}
-    \item Maass, W., Natschläger, T., \& Markram, H. (2002). Real-Time Computing Without Stable States: A New Framework for Neural Computation Based on Perturbations. Neural Computation, 14(11), 2531–2560. \url{https://doi.org/10.1162/089976602760407955}
-    \item \url{https://en.wikipedia.org/wiki/Reservoir_computing}
+    \item Bouchard, K. E., Ganguli, S., \& Brainard, M. S. (2015). Role of the site of synaptic competition and the balance of learning forces for Hebbian encoding of probabilistic Markov sequences. Frontiers in Computational Neuroscience, 9.
+    \item Rajan, K., \& Abbott, L. F. (2006). Eigenvalue Spectra of Random Matrices for Neural Networks. Physical Review Letters, 97(18), 188104.
+    \item Murphy, B. K., \& Miller, K. D. (2009). Balanced Amplification: A New Mechanism of Selective Amplification of Neural Activity Patterns. Neuron, 61(4), 635–648.
+    \item Oja, E. (1982). Simplified neuron model as a principal component analyzer. Journal of Mathematical Biology, 15, 267--273.
+    \item Hennequin, G., Agnes, E. J., \& Vogels, T. P. (2017). Inhibitory Plasticity: Balance, Control, and Codependence. Annual Review of Neuroscience, 40(1), 557–579.
 \end{itemize}
 
 \newpage
 
-\subsection*{Model}
+\subsection*{Transfer of Learning in Feedforward Network}
+
+We were facing the scaling problem last week that the weights and the outputs have a correct cosine shape but not the correct value. I scrutinized but couldn't find any difference between my code and Swinehart's code. So at last, I tuned and changed the gain and shift of the output node, from gain = 3 and shift = 1 to gain = 6.67 and shift = 1.035 (after all, there is nothing special about 3 and 1). These parameters are selected so that Hebbian learning could converge at the correct value given the input nodes have initial gains and shifts and the output node has target activation.
+
+Below are more training details:
 \begin{itemize}
-    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (128 nodes), 1 output layer (1D output).
-    \item Activation function: sigmoid function $r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}}$, where $I_i$ is the input, $r_i$ is the output, $g_i$ is the gain, $s_i$ is the shift. 
-    \item Initialization: input weights, internal weights, output weights, gains, and shifts are randomly initialized using Gaussian distribution. Initial activations are initialized as 0.
-    \item Dale's law: specify a proportion of neurons to be excitatory (here 50\%) and others to be inhibitory. excitatory neurons can only have positive weights and inhibitory neurons can only have negative weights.
-    \item Tasks:
-    \begin{enumerate}
-        \item Predict sine wave: $f(t)=sin(at)$, $a=\frac{1}{60\pi}$. Input $f(t)$, train RNN to predict $f(t+1)$.
-        \item Predict Mackey-Glass equation: $\frac{d}{dt}g(t)=\frac{\beta_0 g(t-\tau)}{1+g(t-\tau)^n}-\gamma g(t)$, 
-        
-        $\gamma=0.1, \beta_0=0.2, n=10, \tau=20$. Input $g(t)$, train RNN to predict $g(t+1)$.
-    \end{enumerate}
-    \item Training: 
-    \begin{enumerate}
-        \item Gradient descent to update gains and shifts only (SGD optimizer in PyTorch, learning rate=$0.2$).
-        % \item Gradient descent on gains and shifts + basic Hebbian learning to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta r_i r_j$, normalize, $\eta=0.01$ with expnential decay).
-        \item Gradient descent on gains and shifts + Oja's learning rule to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$, only on weights from excitatory neuron, $\alpha = \sqrt{128}$, $\eta=0.01$ with expnential decay).
-    \end{enumerate}
-
-
+    \item Two layers. 230 Input nodes. 1 Output nodes. Model stucture is shown in Figure 7.
+    \item The input nodes have gaussian receptive field for different stimulus value determining the input current $I_i$, and sigmoid activation function $r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}}$, where initially gain $g_i = 3$ and shift $s_i = 1$. $g_i$ and $s_i$ could be adjusted during training.
+    \item The output node is connected to input nodes through weights $w_i$, and has sigmoid activation function $r_o = \frac{1}{1 + e^{-g_o(\sum w_ir_i - s_o)}}$, where gain $g_i = 6.67$ and shift $s_i = 1.035$.
+    \item The task is to approximate a cosine function. For the supervisor, we use squared error loss and SGD on gains and shifts of input nodes with learning rate = 0.2.
+    \item Hebbian learning is applied to weights, $w_i \rightarrow w_i + \eta r_i r_o$, where $\eta$ gradually increase from 0 until reaching maximum = 0.0001 at 80th epoch. After each update there is also a normalization step to keep all the weights sum to 5.5.
+    \item A passive boundary at gains and shifts are applied starting from 20th epoch, that is, in the following epoch the gains and shifts could only be more closed to the initial value than the current epoch.
 \end{itemize}
 
-\subsection*{SGD on Gains and Shifts Only}
+In this way, we make the transfer of learning work.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_output.png}\\
-    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_loss.png}
-    \caption{SIN, SGD only.}
+    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_loss.png} \\
+    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_gc.png} \\
+    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_sc.png}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_output.png}
-    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_loss.png}
-    \caption{MG, SGD only.}
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_output.png} \\
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_rf.png}
 \end{figure}
 
-Training the RNN with gain modulation while keeping the input matrix, internal matrix, and output matrix as random could approximate sine wave and Mackey-Glass equation, and in the meanwhile obeying the Dale's law.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_timeweights.png} \\
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_finalweights.png}
+\end{figure}
+\newpage
 
-\subsection*{SGD on Gains and Shifts with Oja's Learning}
+\subsection*{Perturbation in Feedforward Network}
 
-For Oja's learning plus gradient descent, it only works when it is with Adam optimizer, not the normal SGD optimizer.
+We want to test whether the network would show some adaptation effect if undergoing a period of persistent perturbation. Using the trained network, we keep the simulation going, add a persistent noise to all input nodes at 50th epoch ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, $\epsilon_i \sim N(1,0.001)$), last for certain epochs, and then turn off.
+
+We systemetically control the perturbation lasting to investigate the adaptation effect. To quantify the adaptation, we define two indices to represent the "difficulty" for the network to recover after perturbation: (1) area under the loss curve (AUC) and (2) how many epochs it takes to return to loss $<$ 0.0001. The results show that the longer the perturbation lasts, the harder for a network to recover. And we also observe a tendency of saturation.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0214_abb05_perturb_loss_train.png} \\
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0214_abb05_perturb_loss_align.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{baseline_abb05/fig/0214_abb05_perturb_auc.png} \\
+    \includegraphics[width=0.7\textwidth]{baseline_abb05/fig/0214_abb05_perturb_rectime.png}
+\end{figure}
 
 \newpage
 
-%%%%%%%%
+We also control the magnitude of perturbation. Here we fix the duration of perturbation as 500 epochs, but change the mean amplitude of noise, i.e., $\epsilon_i \sim N(x, 0.001)$. We find that, if the amplitude of perturbation is too large, the network would fail to learn or reduce its loss under perturbation, and thus recover quickly when the perturbation is turned off. The failure of learning under large perturbation is due to saturation in sigmoid function and thus the gradient vanishes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_loss.png} \\
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_gc.png} \\
+    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_sc.png} \\
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_auc.png} \\
+    \includegraphics[width=\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_rectime.png} \\
+\end{figure}
+\newpage
+
+\subsection*{Some Attemps in RNN}
+
+For RNN, I made some attempts in training and modeling. 
+
+\begin{itemize}
+    \item Instead of using a input layer matrix to project stimulus value linearly to the recurrent layer, I use a gaussian receptive field for each node in the recurrent layer. There are 32 nodes in recurrent layer, 16 nodes are excitatory and 16 nodes are inhibitory. Each pair of excitatory and inhibitory nodes has the same receptive field, covering the whole range of stimulus value. For the output layer, instead of being random, now I use all 1 (for excitatory nodes) and -1 (for inhibitory nodes).
+    \item During training, I use SGD (learning rate = 0.1) to update the gains and shifts in the recurrent layer for each data point in the sine wave. Initial gains are set to 1 and initial shifts are set to 0. If the mean loss of a period of sine wave is less than 0.001 and there have been 1000 periods, hebbian learning would start. Initial weight matrix are set to be uniform, with excitatory weights sum up to 415 and inhibitory weights sum up to 375.
+    \item For Hebbian learning I use Hebbian covariance rule for both excitatory neurons and inhibitory neurons. $\Delta w_{ij} = \pm \eta \sigma_i \sigma_j$ (+ for excitatory nodes and - for inhibitory nodes) where $\sigma_i = r_i(t-1) - \bar{r_i}(t-1)$ and $\sigma_j = r_j(t) - \bar{r_j}(t)$ and $\bar{r}$ is the average activation over previous 5 time steps.
+    \item After each step of Hebbian learning, there is a normalization performed for each column of weight matrix, to keep the sum constant. For excitatory columns the sum is kept to be 415/16 and for inhibitory columns the sum is kept to be 375/16.
+\end{itemize}
+
+The weights now show a interesting shape. But still I might need to look for more plausible inhibitory plasticity. I still reading papers about mathematical analysis of RNN like eigenvalues spectrum and Schur decomposition. Also, it's worth adding weight dependence of synaptic plasticity and difference rate in depression and potentiation.
+
+\newpage
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_loss.png} \\
+    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_gc.png} \\
+    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_sc.png} \\
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_output.png} \\
+    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix_overtime.png} 
+\end{figure}
+
+\newpage
 
 \section*{Week 10/16 - 10/31}
 
@@ -430,156 +509,77 @@ After the network is trained, I try to add a persistent deviation in the input a
 
 %%%%%%%
 
-\section*{Week 01/22 - 02/20}
+\section*{Week 10/1 - 10/16}
 
 \subsection*{Goal}
 
 \noindent
-Main Task: Transfer of learning from gains to synapses.
+Main Task: Establish a basic recurrent neural network!
 
 \begin{itemize}
-    \item Get the transfer of learning feedforward network work. Try to look at the scale of weights.
-    \item Systematically investigate the adaptation to perturbation.
-    \item Think of a better way to implement hebbian learning in RNN, especially inhibitory hebbian learning.
+    \item Get the code from Ankit
+    \item Change the acitivation function to sigmoid, and change the synaptic modulation to gain modulation using back-propagation
+    \item Simulate sin wave
+    \item Simulate Mackey-Glass equation
+    \item Obey Dale law
 \end{itemize}
 
 \noindent
 Reading
 
 \begin{itemize}
-    \item Bouchard, K. E., Ganguli, S., \& Brainard, M. S. (2015). Role of the site of synaptic competition and the balance of learning forces for Hebbian encoding of probabilistic Markov sequences. Frontiers in Computational Neuroscience, 9.
-    \item Rajan, K., \& Abbott, L. F. (2006). Eigenvalue Spectra of Random Matrices for Neural Networks. Physical Review Letters, 97(18), 188104.
-    \item Murphy, B. K., \& Miller, K. D. (2009). Balanced Amplification: A New Mechanism of Selective Amplification of Neural Activity Patterns. Neuron, 61(4), 635–648.
-    \item Oja, E. (1982). Simplified neuron model as a principal component analyzer. Journal of Mathematical Biology, 15, 267--273.
-    \item Hennequin, G., Agnes, E. J., \& Vogels, T. P. (2017). Inhibitory Plasticity: Balance, Control, and Codependence. Annual Review of Neuroscience, 40(1), 557–579.
+    \item Sussillo, D., \& Abbott, L. F. (2009). Generating Coherent Patterns of Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557. \url{https://doi.org/10.1016/j.neuron.2009.07.018}
+    \item Nicola, W., \& Clopath, C. (2017). Supervised learning in spiking neural networks with FORCE training. Nature Communications, 8(1), 2208. \url{https://doi.org/10.1038/s41467-017-01827-3}
+    \item Maass, W., Natschläger, T., \& Markram, H. (2002). Real-Time Computing Without Stable States: A New Framework for Neural Computation Based on Perturbations. Neural Computation, 14(11), 2531–2560. \url{https://doi.org/10.1162/089976602760407955}
+    \item \url{https://en.wikipedia.org/wiki/Reservoir_computing}
 \end{itemize}
 
 \newpage
 
-\subsection*{Transfer of Learning in Feedforward Network}
-
-We were facing the scaling problem last week that the weights and the outputs have a correct cosine shape but not the correct value. I scrutinized but couldn't find any difference between my code and Swinehart's code. So at last, I tuned and changed the gain and shift of the output node, from gain = 3 and shift = 1 to gain = 6.67 and shift = 1.035 (after all, there is nothing special about 3 and 1). These parameters are selected so that Hebbian learning could converge at the correct value given the input nodes have initial gains and shifts and the output node has target activation.
-
-Below are more training details:
+\subsection*{Model}
 \begin{itemize}
-    \item Two layers. 230 Input nodes. 1 Output nodes. Model stucture is shown in Figure 7.
-    \item The input nodes have gaussian receptive field for different stimulus value determining the input current $I_i$, and sigmoid activation function $r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}}$, where initially gain $g_i = 3$ and shift $s_i = 1$. $g_i$ and $s_i$ could be adjusted during training.
-    \item The output node is connected to input nodes through weights $w_i$, and has sigmoid activation function $r_o = \frac{1}{1 + e^{-g_o(\sum w_ir_i - s_o)}}$, where gain $g_i = 6.67$ and shift $s_i = 1.035$.
-    \item The task is to approximate a cosine function. For the supervisor, we use squared error loss and SGD on gains and shifts of input nodes with learning rate = 0.2.
-    \item Hebbian learning is applied to weights, $w_i \rightarrow w_i + \eta r_i r_o$, where $\eta$ gradually increase from 0 until reaching maximum = 0.0001 at 80th epoch. After each update there is also a normalization step to keep all the weights sum to 5.5.
-    \item A passive boundary at gains and shifts are applied starting from 20th epoch, that is, in the following epoch the gains and shifts could only be more closed to the initial value than the current epoch.
+    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (128 nodes), 1 output layer (1D output).
+    \item Activation function: sigmoid function $r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}}$, where $I_i$ is the input, $r_i$ is the output, $g_i$ is the gain, $s_i$ is the shift. 
+    \item Initialization: input weights, internal weights, output weights, gains, and shifts are randomly initialized using Gaussian distribution. Initial activations are initialized as 0.
+    \item Dale's law: specify a proportion of neurons to be excitatory (here 50\%) and others to be inhibitory. excitatory neurons can only have positive weights and inhibitory neurons can only have negative weights.
+    \item Tasks:
+    \begin{enumerate}
+        \item Predict sine wave: $f(t)=sin(at)$, $a=\frac{1}{60\pi}$. Input $f(t)$, train RNN to predict $f(t+1)$.
+        \item Predict Mackey-Glass equation: $\frac{d}{dt}g(t)=\frac{\beta_0 g(t-\tau)}{1+g(t-\tau)^n}-\gamma g(t)$, 
+        
+        $\gamma=0.1, \beta_0=0.2, n=10, \tau=20$. Input $g(t)$, train RNN to predict $g(t+1)$.
+    \end{enumerate}
+    \item Training: 
+    \begin{enumerate}
+        \item Gradient descent to update gains and shifts only (SGD optimizer in PyTorch, learning rate=$0.2$).
+        % \item Gradient descent on gains and shifts + basic Hebbian learning to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta r_i r_j$, normalize, $\eta=0.01$ with expnential decay).
+        \item Gradient descent on gains and shifts + Oja's learning rule to update the internal weights ($w_{ij} \rightarrow w_{ij} + \eta (r_i r_j - \alpha r_j^2 w_{ij})$, only on weights from excitatory neuron, $\alpha = \sqrt{128}$, $\eta=0.01$ with expnential decay).
+    \end{enumerate}
+
+
 \end{itemize}
 
-In this way, we make the transfer of learning work.
+\subsection*{SGD on Gains and Shifts Only}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_loss.png} \\
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_gc.png} \\
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_sc.png}
+    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_output.png}\\
+    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_loss.png}
+    \caption{SIN, SGD only.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_output.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_rf.png}
+    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_output.png}
+    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_loss.png}
+    \caption{MG, SGD only.}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_timeweights.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_finalweights.png}
-\end{figure}
-\newpage
+Training the RNN with gain modulation while keeping the input matrix, internal matrix, and output matrix as random could approximate sine wave and Mackey-Glass equation, and in the meanwhile obeying the Dale's law.
 
-\subsection*{Perturbation in Feedforward Network}
+\subsection*{SGD on Gains and Shifts with Oja's Learning}
 
-We want to test whether the network would show some adaptation effect if undergoing a period of persistent perturbation. Using the trained network, we keep the simulation going, add a persistent noise to all input nodes at 50th epoch ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, $\epsilon_i \sim N(1,0.001)$), last for certain epochs, and then turn off.
-
-We systemetically control the perturbation lasting to investigate the adaptation effect. To quantify the adaptation, we define two indices to represent the "difficulty" for the network to recover after perturbation: (1) area under the loss curve (AUC) and (2) how many epochs it takes to return to loss $<$ 0.0001. The results show that the longer the perturbation lasts, the harder for a network to recover. And we also observe a tendency of saturation.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0214_abb05_perturb_loss_train.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0214_abb05_perturb_loss_align.png}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.7\textwidth]{baseline_abb05/fig/0214_abb05_perturb_auc.png} \\
-    \includegraphics[width=0.7\textwidth]{baseline_abb05/fig/0214_abb05_perturb_rectime.png}
-\end{figure}
-
-\newpage
-
-We also control the magnitude of perturbation. Here we fix the duration of perturbation as 500 epochs, but change the mean amplitude of noise, i.e., $\epsilon_i \sim N(x, 0.001)$. We find that, if the amplitude of perturbation is too large, the network would fail to learn or reduce its loss under perturbation, and thus recover quickly when the perturbation is turned off. The failure of learning under large perturbation is due to saturation in sigmoid function and thus the gradient vanishes.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_loss.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_gc.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_sc.png} \\
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_auc.png} \\
-    \includegraphics[width=\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_rectime.png} \\
-\end{figure}
-\newpage
-
-\subsection*{Some Attemps in RNN}
-
-For RNN, I made some attempts in training and modeling. 
-
-\begin{itemize}
-    \item Instead of using a input layer matrix to project stimulus value linearly to the recurrent layer, I use a gaussian receptive field for each node in the recurrent layer. There are 32 nodes in recurrent layer, 16 nodes are excitatory and 16 nodes are inhibitory. Each pair of excitatory and inhibitory nodes has the same receptive field, covering the whole range of stimulus value. For the output layer, instead of being random, now I use all 1 (for excitatory nodes) and -1 (for inhibitory nodes).
-    \item During training, I use SGD (learning rate = 0.1) to update the gains and shifts in the recurrent layer for each data point in the sine wave. Initial gains are set to 1 and initial shifts are set to 0. If the mean loss of a period of sine wave is less than 0.001 and there have been 1000 periods, hebbian learning would start. Initial weight matrix are set to be uniform, with excitatory weights sum up to 415 and inhibitory weights sum up to 375.
-    \item For Hebbian learning I use Hebbian covariance rule for both excitatory neurons and inhibitory neurons. $\Delta w_{ij} = \pm \eta \sigma_i \sigma_j$ (+ for excitatory nodes and - for inhibitory nodes) where $\sigma_i = r_i(t-1) - \bar{r_i}(t-1)$ and $\sigma_j = r_j(t) - \bar{r_j}(t)$ and $\bar{r}$ is the average activation over previous 5 time steps.
-    \item After each step of Hebbian learning, there is a normalization performed for each column of weight matrix, to keep the sum constant. For excitatory columns the sum is kept to be 415/16 and for inhibitory columns the sum is kept to be 375/16.
-\end{itemize}
-
-The weights now show a interesting shape. But still I might need to look for more plausible inhibitory plasticity. I still reading papers about mathematical analysis of RNN like eigenvalues spectrum and Schur decomposition. Also, it's worth adding weight dependence of synaptic plasticity and difference rate in depression and potentiation.
-
-\newpage
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_loss.png} \\
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_gc.png} \\
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_sc.png} \\
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_output.png} \\
-    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix.png}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix_overtime.png} 
-\end{figure}
-
-\section*{Week 02/20 - }
-
-\subsection*{Goal}
-
-\noindent
-\begin{itemize}
-    \item More systematic perturbation experiments in the feedforward network (changing amplitude).
-    \item Understand the hebbian learning in RNN.
-\end{itemize}
-
-\subsection*{Perturbation in Feedforward Network}
-
-I found some more subtle details about perturbation experiments in feedforward network.
-
-Firstly, there are two ways to add perturbation. One way is to add perturbation inside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, where $\epsilon_i$ is the perturbation), another way is to add perturbation outside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}} + \epsilon_i$). The former way would not change the range of $r_i$ (0 to 1), while the latter would change the range of $r_i$.
-
-Secondly, for experimenting on perturbation lasting, we expect that a longer perturbation would result in more difficulties in recovery. We observe the expected effect when perturbation is outside sigmoid with amplitude = 0.1 (see previous week). But this is a fortunate case where convergence happens quickly during perturbation. In other cases, for example, when the perturbation is too weak or the perturbation is inside sigmoid, during perturbation convergence might take more epoches. And if you stop perturbation before convergence, the effect would not be so stable.
-
-Thirdly, for experimenting on perturbation amplitude, we expect that a too large perturbation would result in saturation in sigmoid, which in turn causes no learning during perturbation and the recovery would be quick. We observe the basic effect for perturbation inside sigmoid (see previous week). However, there are other cases where perturbation is outside sigmoid, or there is partial learning during perturbation, or recovery fails, to be explored.
+For Oja's learning plus gradient descent, it only works when it is with Adam optimizer, not the normal SGD optimizer.
 
 11
 
