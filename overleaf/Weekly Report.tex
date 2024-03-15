@@ -4,35 +4,154 @@
 \usepackage{geometry}
 \usepackage{float}
 \usepackage{indentfirst}
+\usepackage{amsmath}
 \geometry{left=2.54cm, right=2.54cm, top=3.18cm, bottom=3.18cm}
 % \setlength{\parindent}{0pt}
 
-\title{Weekly Reports}
+\title{Weekly Reports of Feedback Control RNN}
 \author{Jerry Jin}
 
 \begin{document}
 
 \maketitle
 
-\section*{Week 02/20 - }
+\section*{Week 02/20 - 03/15}
 
 \subsection*{Goal}
 
 \noindent
 \begin{itemize}
-    \item More systematic perturbation experiments in the feedforward network (changing amplitude).
     \item Understand the hebbian learning in RNN.
+    \item I try the idea of only modifying readout matrix in RNN (borrowing the idea FORCE learning).
+    \item More systematic perturbation experiments in the feedforward network (changing amplitude).
+
 \end{itemize}
+
+\newpage
+
+\subsection*{RNN with Gain Modulation and Hebbian Learning on Output Weight Matrix}
+
+To understand RNN, I read the FORCE learning paper again (Sussillo \& Abbott, 2009) as well as a MIT tutorial on FORCE learning. They mentioned that, if there is a strong teaching signal for every nodes, the RNN would be much more stable, even if it has chaotic spontanueous activities. What's more, they used a Recursive Least Square algorithm to train only the readout matrix (that is, output weight matrix), leaving the N by N recurrent weight matrix intact. This procedure could let RNN to produce very complex patterns. So I decide to try the idea of only modifying output weight matrix. Instead of modifying it directly (e.g., Recursive Least Square), we could modifying the gains and shifts of each neurons first and then using Hebbian learning to modify the output weight matrix.
+
+First, I start from an RNN without input. Its recurrent layer has N = 1000 neurons, half excitatory and half inhibitory, following Dale's law. $\mathbf{x}$ denotes the N-dimensional state vector of this layer before the activation function, and $J$ denotes the N by N recurrent weight matrix. So the RNN is simulating this equation:
+
+$$\frac{d\mathbf{x}}{dt} = -\mathbf{x} + J f(\mathbf{x}) $$
+
+All recurrent neurons connect to an output neuron through the output weight matrix $w$, giving the output $z$:
+
+$$z = f_{out}(\mathbf{w}^T f(\mathbf{x}))$$
+
+$f$ here represents the sigmoid activation function for each neuron, with adjustable gains and shifts. For this step, we initialize all gains as 1 and all gains as 0 for all recurrent neurons. For the output neuron $f_{output}$, the gain is 1.15 and the shift is -2.5 (hand-tuned).
+
+The $J$ and $w$ I'm using are shown below.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_nofb_rcweight.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_nofb_outweight.png} \\
+\end{figure}
+
+The RNN shows a convergence of activity for all neurons. (Note that I use quite the same parameters as Sussillo \& Abbott 2009, but I change their tanh activation function to sigmoid, and I applies Dale's law. Their network shows a chaotic activity.)
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_nofb_activations.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_nofb_output.png} \\
+\end{figure}
+
+Second, I input the target signal $\sin(\omega t)$ to every neurons by some input weight matrix $u$. So now the RNN is simulating the following equation:
+
+$$\frac{d\mathbf{x}}{dt} = -\mathbf{x} + J f(\mathbf{x}) + \sin (\omega t) \mathbf{u} $$
+
+Now the RNN shows a periodic activity for all neurons.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtarget_activations.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtarget_output.png} \\
+\end{figure}
+
+The third step is to add gain modulation and hebbian learning. I use SGD to update the gains and shifts of every neuron in the reccurrent layer after every period of sine wave, so that the output is closed to the target signal (the output neuron is intact all the time). Then, after the loss is small (800000 time points), I turn on the hebbian learning to modify the output weight matrix. The hebbian rule is a simple correlation rule, $w_{i} \rightarrow w_{i} + \text{Sign}(w_i) \eta f(\mathbf{x_i}) z$. So positive weights are always becoming more positive and negative weights are always becoming more negative. To prevent exploding, there is also a normalization step to keep the sum of all positive weights as 250 and the sum of all negative weights as -250.
+
+We show that gain modulation could indeed make output close to the target.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_loss.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_SGDoutput.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_lastoutput.png} \\
+\end{figure}
+
+And the Hebbian learning does modify the output weight matrix.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_outweight.png} \\
+\end{figure}
+
+Although during the training the change in gains and shifts is ramping up continuously, amazingly, if I just use the inital gains and shifts after training, the network could simulate sine wave quite well, apart from some alignment problem and phase shifting problem.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_theogc.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_theosc.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_nogainoutput.png} \\
+\end{figure}
+
+The phase shifting problem is also a problem mentioned in Sussillo \& Abbott (2009). And I think it is because of phase shifting, the change of gains and shifts don't decrease during training. This is a problem need to be solve at next stage. Other potential improvement includes turning on hebbian learning gradually.
+
+\newpage
 
 \subsection*{Perturbation in Feedforward Network}
 
 I found some more subtle details about perturbation experiments in feedforward network.
 
-Firstly, there are two ways to add perturbation. One way is to add perturbation inside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, where $\epsilon_i$ is the perturbation), another way is to add perturbation outside the sigmoid activation function ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}} + \epsilon_i$). The former way would not change the range of $r_i$ (0 to 1), while the latter would change the range of $r_i$.
+Firstly, there are two ways to add perturbation. One way is to add perturbation \textbf{inside the sigmoid activation function} ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i) + \epsilon_i}}$, where $\epsilon_i$ is the perturbation), another way is to add perturbation o\textbf{utside the sigmoid activation function} ($r_i = \frac{1}{1 + e^{-g_i(I_i-s_i)}} + \epsilon_i$). The former way would not change the range of $r_i$ (0 to 1), while the latter would change the range of $r_i$.
 
-Secondly, for experimenting on perturbation lasting, we expect that a longer perturbation would result in more difficulties in recovery. We observe the expected effect when perturbation is outside sigmoid with amplitude = 0.1 (see previous week). But this is a fortunate case where convergence happens quickly during perturbation. In other cases, for example, when the perturbation is too weak or the perturbation is inside sigmoid, during perturbation convergence might take more epoches. And if you stop perturbation before convergence, the effect would not be so stable.
+Secondly, for experimenting on perturbation lasting, we expect that a longer perturbation would result in more difficulties in recovery. We observe the expected effect when perturbation is \textbf{outside sigmoid} with amplitude = 0.1 (see previous week). But this is a fortunate case where convergence happens quickly during perturbation. In other cases, for example, when the perturbation is too weak or the perturbation is \textbf{inside sigmoid (as below)}, during perturbation convergence might take more epoches. And if you stop perturbation before convergence, the effect would not be so stable.
 
-Thirdly, for experimenting on perturbation amplitude, we expect that a too large perturbation would result in saturation in sigmoid, which in turn causes no learning during perturbation and the recovery would be quick. We observe the basic effect for perturbation inside sigmoid (see previous week). However, there are other cases where perturbation is outside sigmoid, or there is partial learning during perturbation, or recovery fails, to be explored.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturb_loss_train_insigmoid.png} \\
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturb_loss_align_insigmoid.png} \\
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturb_gc_insigmoid.png} \\
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturb_sc_insigmoid.png} \\
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{FNN/fig/temp_abb05_perturb_auc_insigmoid.png} \\
+    \includegraphics[width=0.6\textwidth]{FNN/fig/temp_abb05_perturb_rectime_insigmoid.png} \\
+\end{figure}
+
+Thirdly, for experimenting on perturbation amplitude, we expect that a too large perturbation would result in saturation in sigmoid, which in turn causes no learning during perturbation and the recovery would be quick. We observe the basic effect for perturbation \textbf{inside sigmoid} (see previous week). However, there are other cases where perturbation is outside sigmoid, or there is partial learning during perturbation, or recovery fails, to be explored (as below).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturbamp_loss_outsigmoid.png} \\
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturbamp_gc_outsigmoid.png} \\
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturbamp_sc_outsigmoid.png} \\
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturbamp_auc_outsigmoid.png} \\
+    \includegraphics[width=0.9\textwidth]{FNN/fig/temp_abb05_perturbamp_rectime_outsigmoid.png} \\
+\end{figure}
+
+More investigation into the details (like under what condition should it converge under perturbation) is needed.
+
+\newpage
 
 %%%%%%%%
 
@@ -80,21 +199,21 @@ In this way, we make the transfer of learning work.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_loss.png} \\
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_gc.png} \\
-    \includegraphics[width=0.6\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_sc.png}
+    \includegraphics[width=0.6\textwidth]{FNN/fig/0221_abb05_bphebb_loss.png} \\
+    \includegraphics[width=0.6\textwidth]{FNN/fig/0221_abb05_bphebb_gc.png} \\
+    \includegraphics[width=0.6\textwidth]{FNN/fig/0221_abb05_bphebb_sc.png}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_output.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_rf.png}
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_bphebb_output.png} \\
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_bphebb_rf.png}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_timeweights.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_bphebb_finalweights.png}
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_bphebb_timeweights.png} \\
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_bphebb_finalweights.png}
 \end{figure}
 \newpage
 
@@ -106,14 +225,14 @@ We systemetically control the perturbation lasting to investigate the adaptation
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0214_abb05_perturb_loss_train.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0214_abb05_perturb_loss_align.png}
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0214_abb05_perturb_loss_train.png} \\
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0214_abb05_perturb_loss_align.png}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{baseline_abb05/fig/0214_abb05_perturb_auc.png} \\
-    \includegraphics[width=0.7\textwidth]{baseline_abb05/fig/0214_abb05_perturb_rectime.png}
+    \includegraphics[width=0.7\textwidth]{FNN/fig/0214_abb05_perturb_auc.png} \\
+    \includegraphics[width=0.7\textwidth]{FNN/fig/0214_abb05_perturb_rectime.png}
 \end{figure}
 
 \newpage
@@ -122,15 +241,15 @@ We also control the magnitude of perturbation. Here we fix the duration of pertu
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_loss.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_gc.png} \\
-    \includegraphics[width=0.8\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_sc.png} \\
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_perturbamp_loss.png} \\
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_perturbamp_gc.png} \\
+    \includegraphics[width=0.8\textwidth]{FNN/fig/0221_abb05_perturbamp_sc.png} \\
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_auc.png} \\
-    \includegraphics[width=\textwidth]{baseline_abb05/fig/0221_abb05_perturbamp_rectime.png} \\
+    \includegraphics[width=\textwidth]{FNN/fig/0221_abb05_perturbamp_auc.png} \\
+    \includegraphics[width=\textwidth]{FNN/fig/0221_abb05_perturbamp_rectime.png} \\
 \end{figure}
 \newpage
 
@@ -151,97 +270,214 @@ The weights now show a interesting shape. But still I might need to look for mor
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_loss.png} \\
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_gc.png} \\
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0221_SIN2_bphcppt_sc.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/ourRNN/analysis/fig/0221_SIN2_bphcppt_loss.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/ourRNN/analysis/fig/0221_SIN2_bphcppt_gc.png} \\
+    \includegraphics[width=0.6\textwidth]{RNN/ourRNN/analysis/fig/0221_SIN2_bphcppt_sc.png} \\
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_output.png} \\
-    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix.png}
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/0221_SIN2_bphcppt_output.png} \\
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/0221_SIN2_bphcppt_weight_matrix.png}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/0221_SIN2_bphcppt_weight_matrix_overtime.png} 
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/0221_SIN2_bphcppt_weight_matrix_overtime.png} 
 \end{figure}
 
 \newpage
 
-\section*{Week 10/16 - 10/31}
+%%%%%%%%%
+
+\section*{Week 11/27 - 01/22}
 
 \subsection*{Goal}
 
 \noindent
-Main Task: Feedback control to Linear RNN, and test the performance under noise.
+Main Task: Transfer of learning from gains to synapses.
 
 \begin{itemize}
-    \item Add gaussian noise
-    \item Add Kalma filter and LQR control signal
+    \item Find out how Swinehart and Abbott (2005) manage to do the transfer of learning
+    \item Try hard decay on gain modulation magnitude
+    \item Try persistent perturbation rather than periodic perturbation
+    \item Slowly grow the Hebbian learning rate, avoid abrupt change
+    \item On RNN, try inhibitory synaptic plasticity and get the transfer of learning work
 \end{itemize}
 
 \noindent
 Reading
 
 \begin{itemize}
-    \item Charles, A. S., Balavoine, A., \& Rozell, C. J. (2016). Dynamic Filtering of Time-Varying Sparse Signals via $\ell _1$ Minimization. IEEE Transactions on Signal Processing, 64(21), 5644–5656.
-    \item Rubin, R., Abbott, L. F., \& Sompolinsky, H. (2017). Balanced excitation and inhibition are required for high-capacity, noise-robust neuronal selectivity. Proceedings of the National Academy of Sciences, 114(44).
-    \item Zhang, Z., \& Fujisaki, Y. (2023). Sparse Feedback Controller: From Open-loop Solution to Closed-loop Realization (arXiv:2303.15175). arXiv.
+    \item Vogels, T. P., Sprekeler, H., Zenke, F., Clopath, C., \& Gerstner, W. (2011). Inhibitory Plasticity Balances Excitation and Inhibition in Sensory Pathways and Memory Networks. Science, 334(6062), 1569–1573.
+    \item Vogels, T. P., Froemke, R. C., Doyon, N., Gilson, M., Haas, J. S., Liu, R., Maffei, A., Miller, P., Wierenga, C. J., Woodin, M. A., Zenke, F., \& Sprekeler, H. (2013). Inhibitory synaptic plasticity: Spike timing-dependence and putative network function. Frontiers in Neural Circuits, 7.
+    \item Rozell, C., Johnson, D., Baraniuk, R., \& Olshausen, B. (2007). Locally Competitive Algorithms for Sparse Approximation. 2007 IEEE International Conference on Image Processing, IV-169-IV–172.
+    \item Paul, A., Wagner, S., \& Das, A. (2022). Learning in Feedback-driven Recurrent Spiking Neural Networks using full-FORCE Training (arXiv:2205.13585). arXiv.
+    \item Ogawa, S., Fumarola, F., \& Mazzucato, L. (2023). Multitasking via baseline control in recurrent neural networks. Proceedings of the National Academy of Sciences, 120(33), e2304394120.
 \end{itemize}
 
 \newpage
 
-\subsection*{Model}
+\subsection*{Transfer of Learning in Feedforward Network}
+
+% Last week, I demonstrated a way to transfer learning in gains and shifts to weights. However, it is based on switching hebbian learning on and off frequently: only if the loss for a particular data point is small, hebbian learning is performed. I also actively narrow the gains and shifts boundary. It turns out that it does not work well for RNN or adpatation to perturbation.
+
+Ideally, after doing backprop on gains and shifts, the response tuning curves of side neurons would go up and those of middle neurons would go down. Then, when hebbian learning is turning on, the weights of side neurons would get larger update than those of middle nuerons. Plus, the normalization process would keep the sum of the weights as constant, resulting in a cosine-like weights. The changed weights would "exaggerate" the model outputs (e.g., even lower outputs in the middle of the curve). So, to reduce the loss, The next rounds of backprop would flatten the response tuning curves. In theory, this process transfers the learning in gains and shifts to weights. (We don't really need to actively shrink of gains and shifts by putting a shrinking boundaries. In fact, if the shrinkage/flattening goes too fast, hebbian learning could not result in enough curvature in weights.)
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{FNN/fig/abb05_struc.png}
+    \includegraphics[width=0.45\textwidth]{FNN/fig/abb05_paperresult_draw.jpg}
+    \\
+    \caption{The sturcture and the claimed result in the paper.}
+\end{figure}
+
+In practice, the process could not transfer the learning completely, returning the gains and shifts to the initial values. It would converge to a state where the learning is partly in weights and partly in gains and shifts. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.3\textwidth]{FNN/fig/0122_abb05_bphebb_onlyweights.png}
+    \includegraphics[width=0.3\textwidth]{FNN/fig/0122_abb05_bphebb_rf.png}
+    \includegraphics[width=0.3\textwidth]{FNN/fig/0122_abb05_bphebb_weights.png}
+    \\
+    \includegraphics[width=0.3\textwidth]{FNN/fig/0122_abb05_bphebb_loss.png}
+    \includegraphics[width=0.3\textwidth]{FNN/fig/0122_abb05_bphebb_gc.png}
+    \includegraphics[width=0.3\textwidth]{FNN/fig/0122_abb05_bphebb_sc.png}\\
+    \caption{Hebbian learning start after 10 epoches.}
+\end{figure}
+
+To understand this, I did an experiment where I keep the gains and shifts unchanged as initial and use backprop to find the "correct" weights. Then I turn on the hebbian learning, but the "correct" weights is not stable. In fact, it would converge to some weights whose loss is high. In other words, the "correct" weights is not a convergence point of hebbian learning.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_wt_weights.png}
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_wtconv_loss.png} \\
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_wtconv_weights.png}
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_wtconv_output.png}
+    \caption{Changes after Hebbian learning on initial gains and correct weights.}
+\end{figure}
+
+Mathemetically, the convergence point of hebbian learning should meet some requirements. Say, there are $n$ input nodes and $m$ inputs. For the $i$th input, the activation of input nodes are $a_{i1},\dots,a_{in}$. The target output is $y_i$. Let $w_j$ be the weight from $j$th input nodes to the output node. Denote matrix $A={a_{ij}}$, vector $y=(y_1,\dots,y_n)^T$, vector $w=(w_1,\dots,w_n)^T$. So the "correct" weights should satisfy: $$Aw=y$$
+The hebbian update before normalization to the weights would be $A^Ty$. If the weights are to remain the same, the hebbian update should be in the same direction as original weights: $$A^Ty=kw$$
+This leads us to $A^TAw=kw$, meaning that only if the "correct" weights are eigenvectors of $A^TA$ could hebbian learning converge.
+
+\subsection*{Perturbation in Feedforward Network}
+
+After the network is trained, I try to add a persistent deviation in neurons' activation after 50 epoches, The perturbation lasts for 1000, 2000, or 5000 epoches. From the losses one could see, the network adapts to the perturbation quickly (with both backprop and hebbian learning), and after the perturbation is turned off, the loss goes up suddenly but gradually goes back to normal.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_perturb_loss.png} \\
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_perturb_gc.png} 
+    \includegraphics[width=0.45\textwidth]{FNN/fig/0122_abb05_perturb_sc.png}
+    \caption{Perturbation in feedforward netork.}
+\end{figure}
+
+\newpage
+
+\subsection*{Transfer of learning in RNN}
+
+I implement the same training paradigm to train the RNN, i.e., first do backprop on gains and shifts and then turn on hebbian learning, to see how much of the learning could be transfered from gains and shifts to weights.
+
+Some details: 32 nodes in recurrent layer; hebbian learning is performed for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1 and -1; one epoch represents 1 period of sinwave with 120 timesteps.
+
+For inhibitory synaptic plasticity, I didn't find a principle applicable for firing rate network. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.3\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_bphebbpt_output.png}
+    \includegraphics[width=0.3\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_bphebbpt_activations.png}
+    \includegraphics[width=0.3\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_bphebbpt_weight_matrix.png}\\
+    \includegraphics[width=0.3\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_bphebbpt_loss.png}
+    \includegraphics[width=0.3\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_bphebbpt_gc.png}
+    \includegraphics[width=0.3\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_bphebbpt_sc.png}\\
+    \caption{Hebbian learning start after 1000 epoches.}
+\end{figure}
+
+Notice the grid-like weights after hebbian learning. It is quite different from the "correct" weights obtained from backprop on weights.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_wt_weight_matrix.png}
+    \caption{Weight matrix after backprop on weights.}
+\end{figure}
+
+\subsection*{Perturbation in RNN}
+
+After the network is trained, I try to add a persistent deviation in the input after 50 epoches, The perturbation lasts for 2000, 5000, or 10000 epoches.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_perturb_loss.png} \\
+    \includegraphics[width=0.45\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_perturb_gc.png} 
+    \includegraphics[width=0.45\textwidth]{RNN/ourRNN/analysis/fig/0122_SIN2_perturb_sc.png}
+    \caption{Perturbation in RNN.}
+\end{figure}
+
+\subsection*{Thoughts}
+
 \begin{itemize}
-    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (32 nodes) where 50\% are excitatory neurons (obeying Dale's law), 1 output layer (1D output). 
-
-    \item Activation function: for now $y=x$ to make it a simple linear system.
-    
-    \item Equations: 
-    \begin{eqnarray}
-    \nonumber
-    \dot{x_t} = (W-I)x_t + I_{t} + u_{t} + w_d \\
-    \nonumber
-    y_t = Cx_{t} + w_n
-    \end{eqnarray}
-    
-    \item $x_t$ is the activation, $I_t$ is the input after input layer, $u_t$ is the control input, $w_d$ is the Gaussian processing noise following $N(0,W_d)$, $w_n$ is the Gaussian measurement noise following $N(0,W_n)$, $W$ is the weight matrix, $C$ is set to be identity matrix.
-
-    \item In the absense of control input and noise, use backpropagation to train the weight matrix $W$ so that $x_t$ gives ideal outputs after output layer. We refer to such $x_t$ as reference activations $r_t$.
-
-    \item Kalman filter: $\dot{\hat{x}_t} = (W-I)\hat{x}_t + I_{t} + u_{t} + K_f(y_t - C\hat{x}_t)$.
-    
-    \item LQR: $u_t = -K(\hat{x}_t - r_t)$, to minimize $\int x^TQx + u^TRu \,dt$.
-
-    \item For SIN, $Q = I$, $R = 0.01I$, $W_d = 0.01I$, $W_n = 0.001I$. For MG, $Q = I$, $R = 0.1I$, $W_d = 0.001I$, $W_n = 0.0001I$. These choices, as well as the number of nodes, may influence convergence.
-
+    \item Hebbian learning may not be able to transfer all the learning from gains and shifts to weights. Hebbian learning is after all unsupervised learning, especially in RNN, how could $n$ nodes instruct $n^2$ weights to learn?
+    \item How to change backprop to feedback control is another problem. As our RNN is trained with backprop and it is backprop that reaches a balance with hebbian learning, it is hard for feedback control to reach a similar balance. Primitive attempt reveals that hebbian learning would cause the output drift away under feedback control.
+    \item A plausible inhibitory synapses learning rule is yet to find. Maybe we should try on building the spiking neural network?
 \end{itemize}
-
-% structure plot!
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{baseline_linear/fig/lqg_structure.jpg}
-\end{figure}
-
-\subsection*{Persistent and Instant Perturbation}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{baseline_linear/fig/SIN_lin_noise.png}
-    \caption{SIN, linear RNN and LQG under perturbation, without onging hebbian learning.}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{baseline_linear/fig/MG_lin_noise.png}
-    \caption{MG, linear RNN and LQG under perturbation, without onging hebbian learning.}
-\end{figure}
-
 
 \newpage
 
 %%%%%%%
+
+\section*{Week 11/13 - 11/27}
+
+\subsection*{Goal}
+
+\noindent
+Main Task: Adaptative gain modulation and feedback control. Learn the perturbation pattern and gradually transfer the learning to synaptic plasticity.
+
+\begin{itemize}
+    \item Predictive feedback control: learn to give a control input in advance to correct the periodic perturbation.
+    \item Transfer of learning: using Oja learning to transfer the learning effect from gains to synaptic weights.
+\end{itemize}
+
+\noindent
+Reading
+
+\begin{itemize}
+    \item Bittner, K. C., Milstein, A. D., Grienberger, C., Romani, S., \& Magee, J. C. (2017). Behavioral time scale synaptic plasticity underlies CA1 place fields. Science, 357(6355), 1033–1036.
+    \item Bouchard, K. E., Ganguli, S., \& Brainard, M. S. (2015). Role of the site of synaptic competition and the balance of learning forces for Hebbian encoding of probabilistic Markov sequences. Frontiers in Computational Neuroscience, 9.
+\end{itemize}
+
+\newpage
+
+\subsection*{Predictive Feedback Control Framework}
+
+One possible framework that is able to predictively give control signal to correct periodic perturbation is to use another neural network with Q-learning.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{RNN/ourRNN/analysis/fig/qlearn_struc.jpg}
+\end{figure}
+
+Let the state at time $t$ be $x_t$. Given $x_t$, An action $a_t$ (i.e., control signal) could drive the state $x_t$ to some $x_{t+1}$. We define the reward $r_{t+1}$ associate with $x_{t+1}$ as the negative of the distance between the output and the target.
+
+We define the estimated state-action value as $Q(x_t, a_t)$. The goal is to learn the $Q$ function so that it can correctly estimate the future rewards when exert an action $a_t$ at the state $x_t$. Once we have a good $Q$, given $x_t$, we just need to choose $a_t$ that maximize $Q(x_t, a_t)$ as our control signal.
+
+To approximate the function $Q$, we may need to use another simple neural network (since there are infinitely many states and actions), so that $Q(s,a) \approx Q(s,a;\theta)$. The loss function would be 
+$$ L = E \left[ \left( r_{t+1} + \gamma \max_{a} Q(s_{t+1},a; \theta) - Q(s_t, a_t; \theta) \right)^2 \right] $$
+To simplify, we could assume $\max_{a} Q(s_{t+1}, a; \theta) = 0$, so $ L = E \left[ \left( r_{t+1} - Q(s_t, a_t; \theta) \right)^2 \right] $. 
+
+But training this neural network requires back propagation. Also it would substitute LQR once it is fully functioning.
+
+\newpage
+
+\subsection*{Transfer of Learning}
+
+To explore transfer of learning, I first explore the gains and weights during the initial training (no perturbation). However, it seems that gains are not converging. (By reflection it might be because of Adam optimizer. Shall try SGD later.) Gain change represents the distance between current gains and initial gains. Weight sum represents sum of weights.
+
+I also try to replicate the simple neural network in Swinehart and Abbott (2005), using SGD and Hebbian learning. But it seems that the learning in gains doesn't completely transfer into the weights.
+
+\newpage
+
+%%%%%%%%
 
 \section*{Week 10/31 - 11/13}
 
@@ -299,13 +535,13 @@ Reading
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/1113_SIN_lqg.png}
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/1113_SIN_lqg.png}
     \caption{SIN, RNN and LQG on gains under periodic noise, without onging hebbian learning.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/1113_MG_lqg.png}
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/1113_MG_lqg.png}
     \caption{MG, RNN and LQG on gains under periodic noise, without onging hebbian learning.}
 \end{figure}
 
@@ -319,191 +555,74 @@ Oja learning can't ensure a steady performance without noise. The effect of Oja 
 
 %%%%%%%%
 
-\section*{Week 11/13 - 11/27}
+\section*{Week 10/16 - 10/31}
 
 \subsection*{Goal}
 
 \noindent
-Main Task: Adaptative gain modulation and feedback control. Learn the perturbation pattern and gradually transfer the learning to synaptic plasticity.
+Main Task: Feedback control to Linear RNN, and test the performance under noise.
 
 \begin{itemize}
-    \item Predictive feedback control: learn to give a control input in advance to correct the periodic perturbation.
-    \item Transfer of learning: using Oja learning to transfer the learning effect from gains to synaptic weights.
+    \item Add gaussian noise
+    \item Add Kalma filter and LQR control signal
 \end{itemize}
 
 \noindent
 Reading
 
 \begin{itemize}
-    \item Bittner, K. C., Milstein, A. D., Grienberger, C., Romani, S., \& Magee, J. C. (2017). Behavioral time scale synaptic plasticity underlies CA1 place fields. Science, 357(6355), 1033–1036.
-    \item Bouchard, K. E., Ganguli, S., \& Brainard, M. S. (2015). Role of the site of synaptic competition and the balance of learning forces for Hebbian encoding of probabilistic Markov sequences. Frontiers in Computational Neuroscience, 9.
+    \item Charles, A. S., Balavoine, A., \& Rozell, C. J. (2016). Dynamic Filtering of Time-Varying Sparse Signals via $\ell _1$ Minimization. IEEE Transactions on Signal Processing, 64(21), 5644–5656.
+    \item Rubin, R., Abbott, L. F., \& Sompolinsky, H. (2017). Balanced excitation and inhibition are required for high-capacity, noise-robust neuronal selectivity. Proceedings of the National Academy of Sciences, 114(44).
+    \item Zhang, Z., \& Fujisaki, Y. (2023). Sparse Feedback Controller: From Open-loop Solution to Closed-loop Realization (arXiv:2303.15175). arXiv.
 \end{itemize}
 
 \newpage
 
-\subsection*{Predictive Feedback Control Framework}
-
-One possible framework that is able to predictively give control signal to correct periodic perturbation is to use another neural network with Q-learning.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{analysis/fig/qlearn_struc.jpg}
-    \label{fig:1}
-\end{figure}
-
-Let the state at time $t$ be $x_t$. Given $x_t$, An action $a_t$ (i.e., control signal) could drive the state $x_t$ to some $x_{t+1}$. We define the reward $r_{t+1}$ associate with $x_{t+1}$ as the negative of the distance between the output and the target.
-
-We define the estimated state-action value as $Q(x_t, a_t)$. The goal is to learn the $Q$ function so that it can correctly estimate the future rewards when exert an action $a_t$ at the state $x_t$. Once we have a good $Q$, given $x_t$, we just need to choose $a_t$ that maximize $Q(x_t, a_t)$ as our control signal.
-
-To approximate the function $Q$, we may need to use another simple neural network (since there are infinitely many states and actions), so that $Q(s,a) \approx Q(s,a;\theta)$. The loss function would be 
-$$ L = E \left[ \left( r_{t+1} + \gamma \max_{a} Q(s_{t+1},a; \theta) - Q(s_t, a_t; \theta) \right)^2 \right] $$
-To simplify, we could assume $\max_{a} Q(s_{t+1}, a; \theta) = 0$, so $ L = E \left[ \left( r_{t+1} - Q(s_t, a_t; \theta) \right)^2 \right] $. 
-
-But training this neural network requires back propagation. Also it would substitute LQR once it is fully functioning.
-
-\newpage
-
-\subsection*{Transfer of Learning}
-
-To explore transfer of learning, I first explore the gains and weights during the initial training (no perturbation). However, it seems that gains are not converging. (By reflection it might be because of Adam optimizer. Shall try SGD later.) Gain change represents the distance between current gains and initial gains. Weight sum represents sum of weights.
-
-I also try to replicate the simple neural network in Swinehart and Abbott (2005), using SGD and Hebbian learning. But it seems that the learning in gains doesn't completely transfer into the weights.
-
-\newpage
-
-%%%%%%%%
-
-\section*{Week 11/27 - 01/22}
-
-\subsection*{Goal}
-
-\noindent
-Main Task: Transfer of learning from gains to synapses.
-
+\subsection*{Model}
 \begin{itemize}
-    \item Find out how Swinehart and Abbott (2005) manage to do the transfer of learning
-    \item Try hard decay on gain modulation magnitude
-    \item Try persistent perturbation rather than periodic perturbation
-    \item Slowly grow the Hebbian learning rate, avoid abrupt change
-    \item On RNN, try inhibitory synaptic plasticity and get the transfer of learning work
+    \item Structure: 1 input layer (1D input), 1 recurrently-connected hidden layer (32 nodes) where 50\% are excitatory neurons (obeying Dale's law), 1 output layer (1D output). 
+
+    \item Activation function: for now $y=x$ to make it a simple linear system.
+    
+    \item Equations: 
+    \begin{eqnarray}
+    \nonumber
+    \dot{x_t} = (W-I)x_t + I_{t} + u_{t} + w_d \\
+    \nonumber
+    y_t = Cx_{t} + w_n
+    \end{eqnarray}
+    
+    \item $x_t$ is the activation, $I_t$ is the input after input layer, $u_t$ is the control input, $w_d$ is the Gaussian processing noise following $N(0,W_d)$, $w_n$ is the Gaussian measurement noise following $N(0,W_n)$, $W$ is the weight matrix, $C$ is set to be identity matrix.
+
+    \item In the absense of control input and noise, use backpropagation to train the weight matrix $W$ so that $x_t$ gives ideal outputs after output layer. We refer to such $x_t$ as reference activations $r_t$.
+
+    \item Kalman filter: $\dot{\hat{x}_t} = (W-I)\hat{x}_t + I_{t} + u_{t} + K_f(y_t - C\hat{x}_t)$.
+    
+    \item LQR: $u_t = -K(\hat{x}_t - r_t)$, to minimize $\int x^TQx + u^TRu \,dt$.
+
+    \item For SIN, $Q = I$, $R = 0.01I$, $W_d = 0.01I$, $W_n = 0.001I$. For MG, $Q = I$, $R = 0.1I$, $W_d = 0.001I$, $W_n = 0.0001I$. These choices, as well as the number of nodes, may influence convergence.
+
 \end{itemize}
 
-\noindent
-Reading
+% structure plot!
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{RNN/baseline_linear/fig/lqg_structure.jpg}
+\end{figure}
 
-\begin{itemize}
-    \item Vogels, T. P., Sprekeler, H., Zenke, F., Clopath, C., \& Gerstner, W. (2011). Inhibitory Plasticity Balances Excitation and Inhibition in Sensory Pathways and Memory Networks. Science, 334(6062), 1569–1573.
-    \item Vogels, T. P., Froemke, R. C., Doyon, N., Gilson, M., Haas, J. S., Liu, R., Maffei, A., Miller, P., Wierenga, C. J., Woodin, M. A., Zenke, F., \& Sprekeler, H. (2013). Inhibitory synaptic plasticity: Spike timing-dependence and putative network function. Frontiers in Neural Circuits, 7.
-    \item Rozell, C., Johnson, D., Baraniuk, R., \& Olshausen, B. (2007). Locally Competitive Algorithms for Sparse Approximation. 2007 IEEE International Conference on Image Processing, IV-169-IV–172.
-    \item Paul, A., Wagner, S., \& Das, A. (2022). Learning in Feedback-driven Recurrent Spiking Neural Networks using full-FORCE Training (arXiv:2205.13585). arXiv.
-    \item Ogawa, S., Fumarola, F., \& Mazzucato, L. (2023). Multitasking via baseline control in recurrent neural networks. Proceedings of the National Academy of Sciences, 120(33), e2304394120.
-\end{itemize}
-
-\newpage
-
-\subsection*{Transfer of Learning in Feedforward Network}
-
-% Last week, I demonstrated a way to transfer learning in gains and shifts to weights. However, it is based on switching hebbian learning on and off frequently: only if the loss for a particular data point is small, hebbian learning is performed. I also actively narrow the gains and shifts boundary. It turns out that it does not work well for RNN or adpatation to perturbation.
-
-Ideally, after doing backprop on gains and shifts, the response tuning curves of side neurons would go up and those of middle neurons would go down. Then, when hebbian learning is turning on, the weights of side neurons would get larger update than those of middle nuerons. Plus, the normalization process would keep the sum of the weights as constant, resulting in a cosine-like weights. The changed weights would "exaggerate" the model outputs (e.g., even lower outputs in the middle of the curve). So, to reduce the loss, The next rounds of backprop would flatten the response tuning curves. In theory, this process transfers the learning in gains and shifts to weights. (We don't really need to actively shrink of gains and shifts by putting a shrinking boundaries. In fact, if the shrinkage/flattening goes too fast, hebbian learning could not result in enough curvature in weights.)
+\subsection*{Persistent and Instant Perturbation}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_struc.png}
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/abb05_paperresult_draw.jpg}
-    \\
-    \caption{The sturcture and the claimed result in the paper.}
+    \includegraphics[width=\textwidth]{RNN/baseline_linear/fig/SIN_lin_noise.png}
+    \caption{SIN, linear RNN and LQG under perturbation, without onging hebbian learning.}
 \end{figure}
-
-In practice, the process could not transfer the learning completely, returning the gains and shifts to the initial values. It would converge to a state where the learning is partly in weights and partly in gains and shifts. 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.3\textwidth]{baseline_abb05/fig/0122_abb05_bphebb_onlyweights.png}
-    \includegraphics[width=0.3\textwidth]{baseline_abb05/fig/0122_abb05_bphebb_rf.png}
-    \includegraphics[width=0.3\textwidth]{baseline_abb05/fig/0122_abb05_bphebb_weights.png}
-    \\
-    \includegraphics[width=0.3\textwidth]{baseline_abb05/fig/0122_abb05_bphebb_loss.png}
-    \includegraphics[width=0.3\textwidth]{baseline_abb05/fig/0122_abb05_bphebb_gc.png}
-    \includegraphics[width=0.3\textwidth]{baseline_abb05/fig/0122_abb05_bphebb_sc.png}\\
-    \caption{Hebbian learning start after 10 epoches.}
+    \includegraphics[width=\textwidth]{RNN/baseline_linear/fig/MG_lin_noise.png}
+    \caption{MG, linear RNN and LQG under perturbation, without onging hebbian learning.}
 \end{figure}
-
-To understand this, I did an experiment where I keep the gains and shifts unchanged as initial and use backprop to find the "correct" weights. Then I turn on the hebbian learning, but the "correct" weights is not stable. In fact, it would converge to some weights whose loss is high. In other words, the "correct" weights is not a convergence point of hebbian learning.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wt_weights.png}
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_weights.png}
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_wtconv_output.png}
-    \caption{Changes after Hebbian learning on initial gains and correct weights.}
-\end{figure}
-
-Mathemetically, the convergence point of hebbian learning should meet some requirements. Say, there are $n$ input nodes and $m$ inputs. For the $i$th input, the activation of input nodes are $a_{i1},\dots,a_{in}$. The target output is $y_i$. Let $w_j$ be the weight from $j$th input nodes to the output node. Denote matrix $A={a_{ij}}$, vector $y=(y_1,\dots,y_n)^T$, vector $w=(w_1,\dots,w_n)^T$. So the "correct" weights should satisfy: $$Aw=y$$
-The hebbian update before normalization to the weights would be $A^Ty$. If the weights are to remain the same, the hebbian update should be in the same direction as original weights: $$A^Ty=kw$$
-This leads us to $A^TAw=kw$, meaning that only if the "correct" weights are eigenvectors of $A^TA$ could hebbian learning converge.
-
-\subsection*{Perturbation in Feedforward Network}
-
-After the network is trained, I try to add a persistent deviation in neurons' activation after 50 epoches, The perturbation lasts for 1000, 2000, or 5000 epoches. From the losses one could see, the network adapts to the perturbation quickly (with both backprop and hebbian learning), and after the perturbation is turned off, the loss goes up suddenly but gradually goes back to normal.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_gc.png} 
-    \includegraphics[width=0.45\textwidth]{baseline_abb05/fig/0122_abb05_perturb_sc.png}
-    \caption{Perturbation in feedforward netork.}
-\end{figure}
-
-\newpage
-
-\subsection*{Transfer of learning in RNN}
-
-I implement the same training paradigm to train the RNN, i.e., first do backprop on gains and shifts and then turn on hebbian learning, to see how much of the learning could be transfered from gains and shifts to weights.
-
-Some details: 32 nodes in recurrent layer; hebbian learning is performed for every timestep; evenly distributed gaussian receptive fields for each neuron; output weight matrix are set to all 1 and -1; one epoch represents 1 period of sinwave with 120 timesteps.
-
-For inhibitory synaptic plasticity, I didn't find a principle applicable for firing rate network. Existing attempts are all based on spike timings. So I just use the same idea as in excitatory synapses: the more they are firing together, the inhibitory synapses are stronger (more negative).
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_output.png}
-    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_activations.png}
-    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_weight_matrix.png}\\
-    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_loss.png}
-    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_gc.png}
-    \includegraphics[width=0.3\textwidth]{analysis/fig/0122_SIN2_bphebbpt_sc.png}\\
-    \caption{Hebbian learning start after 1000 epoches.}
-\end{figure}
-
-Notice the grid-like weights after hebbian learning. It is quite different from the "correct" weights obtained from backprop on weights.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_wt_weight_matrix.png}
-    \caption{Weight matrix after backprop on weights.}
-\end{figure}
-
-\subsection*{Perturbation in RNN}
-
-After the network is trained, I try to add a persistent deviation in the input after 50 epoches, The perturbation lasts for 2000, 5000, or 10000 epoches.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{analysis/fig/0122_SIN2_perturb_loss.png} \\
-    \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_perturb_gc.png} 
-    \includegraphics[width=0.45\textwidth]{analysis/fig/0122_SIN2_perturb_sc.png}
-    \caption{Perturbation in RNN.}
-\end{figure}
-
-\subsection*{Thoughts}
-
-\begin{itemize}
-    \item Hebbian learning may not be able to transfer all the learning from gains and shifts to weights. Hebbian learning is after all unsupervised learning, especially in RNN, how could $n$ nodes instruct $n^2$ weights to learn?
-    \item How to change backprop to feedback control is another problem. As our RNN is trained with backprop and it is backprop that reaches a balance with hebbian learning, it is hard for feedback control to reach a similar balance. Primitive attempt reveals that hebbian learning would cause the output drift away under feedback control.
-    \item A plausible inhibitory synapses learning rule is yet to find. Maybe we should try on building the spiking neural network?
-\end{itemize}
 
 \newpage
 
@@ -563,15 +682,15 @@ Reading
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_output.png}\\
-    \includegraphics[width=\textwidth]{analysis/fig/1016_SIN_bpgain_loss.png}
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/1016_SIN_bpgain_output.png}\\
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/1016_SIN_bpgain_loss.png}
     \caption{SIN, SGD only.}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_output.png}
-    \includegraphics[width=\textwidth]{analysis/fig/1016_MG_bpgain_loss.png}
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/1016_MG_bpgain_output.png}
+    \includegraphics[width=\textwidth]{RNN/ourRNN/analysis/fig/1016_MG_bpgain_loss.png}
     \caption{MG, SGD only.}
 \end{figure}
 
@@ -580,7 +699,5 @@ Training the RNN with gain modulation while keeping the input matrix, internal m
 \subsection*{SGD on Gains and Shifts with Oja's Learning}
 
 For Oja's learning plus gradient descent, it only works when it is with Adam optimizer, not the normal SGD optimizer.
-
-11
 
 \end{document}
