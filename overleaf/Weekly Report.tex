@@ -15,6 +15,48 @@
 
 \maketitle
 
+\section*{Week 03/15 - 03/29}
+
+\subsection*{Goal}
+
+\noindent
+\begin{itemize}
+    \item Try to merge the hebbian learning of readout matrix into the framework of feedback control, instead of using SGD.
+    \item Try to input a set of basis functions, instead of inputing only the target.
+
+\end{itemize}
+
+\newpage
+
+\subsection*{The Pipeline for Exploration}
+
+To my understanding, we want our network to do the following:
+
+\begin{enumerate}
+    \item The network initializes with initial gains, initial shifts, intial weights.
+    \item With feedback control, we modulate the gains and shifts so that the network outputs the target.
+    \item Keeping the output as the target, Hebbian learning modifies the weights and returns gains and shifts to their initial values. Thus, the network could finally output the target with initial gains, initial shifts, and modified weights. 
+\end{enumerate}
+
+I had several attempts where step 2 is successful but step 3 is not. A common issue is that the gains and shifts refuse to return to their initial values after Hebbian learning is turned on. Another common issue is that the weights could not converge.
+
+A successful step 3 implies that there must exist a \textbf{convergence point} for weights under Hebbian learning, where the network could output the target with initial gains and shifts.
+
+So I come up with an idea to test step 3 separately. We "pretend" that step 2 is done perfectly and that the network is outputing the target. We do Hebbian learning using the target. With initial gains, initial shifts, and such Hebbian learning, we could test whether the weights could converge to an convergence point where the actual output is closed to the target.
+
+If such test is passed, once step 2 is successful and the output is clamped to the target, Hebbian learning would drive weights to that convergence point, so that step 3 is acheived.
+
+\subsection*{Deepen the Understanding of Last Week's Result}
+
+Recall that last week I gave the network the target sine wave as input and trained the readout matrix. After going through step 1 to 3, the network finally produces a phase-shifted sine-wave. 
+
+To find out why there was this phase-shifting problem, I did the test of step 3 decribed above (i.e., using the target as pretended output to perform the Hebbian learning). I found that the network naturally converge to a point where the actual output is the phase-shifted sine wave.
+
+Also, through observation, we could see that every node has a sine-like activation, with different phases. The output is the weighed sum of all those sine waves. Hebbian learning on the readout matrix is just to adjust these additive weights. However, a correlation Hebbian learning rule cares more about the average amplitude of each sine wave, rather than the phase. So I guess to solve the problem requires the Hebbian covariance rule.
+
+\newpage
+
+
 \section*{Week 02/20 - 03/15}
 
 \subsection*{Goal}
