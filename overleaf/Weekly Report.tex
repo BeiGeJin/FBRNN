@@ -42,7 +42,7 @@ I had several attempts where step 2 is successful but step 3 is not. A common is
 
 A successful step 3 implies that there must exist a \textbf{convergence point} for weights under Hebbian learning, where the network could output the target with initial gains and shifts.
 
-So I come up with an idea to test step 3 separately. We "pretend" that step 2 is done perfectly and that the network is outputing the target. We do Hebbian learning using the target. With initial gains, initial shifts, and such Hebbian learning, we could test whether the weights could converge to an convergence point where the actual output is closed to the target.
+So I come up with an idea to test step 3 separately. We "pretend" that step 2 is done perfectly and that the network is outputing the target. We do Hebbian learning using the target. (Normally, $w_{i} \rightarrow w_{i} + \eta r_i z$, where $r_i$ is the activation of node $i$ and $z$ is the activation of the output node, but now we use the target as $z$, pretending that the output node is activated correctly.) With initial gains, initial shifts, and such Hebbian learning, we could test whether the weights could converge to an convergence point where the actual output is closed to the target.
 
 If such test is passed, once step 2 is successful and the output is clamped to the target, Hebbian learning would drive weights to that convergence point, so that step 3 is acheived.
 
@@ -56,11 +56,15 @@ To find out why there was this phase-shifting problem, I did the test of step 3 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_nofb_rcweight.png} \\
-    \includegraphics[width=0.6\textwidth]{RNN/FORCE/fig/FORCE_nofb_outweight.png} \\
+    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_targethebb_lastoutput.png} \\
 \end{figure}
 
 Also, through observation, we could see that every node has a sine-like activation, with different phases. The output is the weighed sum of all those sine waves. Hebbian learning on the readout matrix is just to adjust these additive weights. However, a correlation Hebbian learning rule cares more about the average amplitude of each sine wave, rather than the phase. So I guess to solve the problem requires the Hebbian covariance rule.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_fbtargethebb_weightcorractv.png} \\
+\end{figure}
 
 \newpage
 
@@ -70,6 +74,10 @@ Since inputing the target to the network may not be ideal in realistic situation
 
 Again, I did the test of step 3 described above. The hope is that Hebbian learning could suppress those with wrong frequency and wrong phase and strengthen those with correct frequency and correct phase. Again, Hebbian correlation rule could not do this. With Hebbian covariance rule, a primitive result looks like this. I'm not sure whether it would work if I twist some details. Still need more attempts.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_wavebasis_outputhcp.png} \\
+\end{figure}
 
 
 \newpage
@@ -78,7 +86,7 @@ Again, I did the test of step 3 described above. The hope is that Hebbian learni
 
 The goal is to use control theory rather than SGD to achieve step 2, for the current RNN. Though I realized such stucture to correct perturbation, it turns out that there are more things to be done. Previously, I have a trained network which could produce ideal sine waves. Under perturbation, the idea is to drive the system state to \textbf{the desired state}. But where could we know the desired state? It is achieved a priori from runs without perturbation (admittedly, this is a little bit cheating). 
 
-But here and in a more realistic situation, we would not know the desired state, but \textbf{the desired output}. After consulting Ankit, I got to know that this would be a more complex control problem called tracking problem in control theory. And since our network has other inputs and our network is simulated in discrete time, the full name would be discrete-time model-following tracking problem. I am reading the textbook from Anderson and Moore (1989), and I am still working hard to get the things done properly. 
+But here and in a more realistic situation, we would not know the desired state, but \textbf{the desired output}. After consulting Ankit, I learn that this would be a more complex control problem called tracking problem in control theory. And since our network has other inputs and our network is simulated in discrete time, the full name would be discrete-time model-following tracking problem. I am reading the textbook from Anderson and Moore (1989), and I am still working to get the things done properly. 
 
 To formulate our control problem, we have a system: 
 $$x(t+1) = f(x(t), u(t), I(t))$$
@@ -90,9 +98,12 @@ where $H$ is the readout matrix (output weight matrix). Our target is $\tilde{z}
 
 Applying quadratic control, it is to minimizing the loss $$V = \sum_{t=t_0+1}^T (y(t) - \tilde{y}(t))^T Q (y(t)- \tilde{y}(t)) + u(t-1)^T R u(t-1)$$
 
-We could use the linear approximation of our non-linear system and apply the linear quadratic control theory.
+We could use the linear approximation of our non-linear system and apply the linear quadratic control theory. Currently, the results look like this:
 
-Currently, the results look like this:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_tracking_output.png} \\
+\end{figure}
 
 Since I feel like there are still problems, I did not proceed to try Hebbian learning (step 3). 
 
