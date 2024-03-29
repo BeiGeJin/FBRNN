@@ -15,7 +15,7 @@ class RNN:
 
     def __init__(self, weight_matrix, connectivity_matrix, init_state, init_gain, init_shift,
                  output_weight_matrix, feedback_weight_matrix, output_nonlinearity=nn.Sigmoid(),
-                 time_constant=1, timestep=0.2, g=1.5, activation_func=nn.Sigmoid(), target=None, gainout=1, shiftout=0):
+                 time_constant=1, timestep=0.2, g=1.5, activation_func=nn.Sigmoid(), target=None, gainout=1, shiftout=0, basisset=False):
 
         # Basic tests to ensure correct input shapes.
         assert len(weight_matrix.shape) == 2
@@ -48,22 +48,20 @@ class RNN:
         self.num_nodes = self.weight_matrix.shape[0]
         self.num_outputs = self.output_weight_matrix.shape[0]
         self.g = g
+        self.c = self.timestep/self.time_const
         # Nodes type
         self.weight_type = self.weight_matrix >= 0
         self.node_type = self.weight_type.all(axis=0)
         # whether feedback a target
         self.feed_target = False
+        self.basisset = basisset
         if target is not None:
             self.feed_target = True
             self.target = torch.tensor(target, dtype=torch.float32)
             self.i = 0
 
-    def reset_activations(self):
-        self.activation = torch.zeros((self.num_nodes, 1), dtype=torch.float32)
-
     def forward(self):
 
-        c = self.timestep/self.time_const
         # activation for this state
         self.activation = self.activation_func(self.gain * self.state - self.shift)
         # self.activation = 2 * self.activation_func(self.state) - 1 
@@ -71,14 +69,20 @@ class RNN:
         self.output = self.output_nonlinearity(self.gainout * torch.matmul(self.output_weight_matrix, self.activation) - self.shiftout)
         # feedback for this state
         if not self.feed_target:
-            self.feedback = self.output.clone()
+            # self.feedback = self.output.clone()
+            self.input = torch.matmul(self.feedback_weight_matrix, self.output.clone())
         else:
-            self.feedback = torch.tensor([[self.target[self.i]]])
+            # self.feedback = torch.tensor([[self.target[self.i]]])
+            if not self.basisset:
+                self.input = torch.matmul(self.feedback_weight_matrix, torch.tensor([[self.target[self.i]]]))
+            else:
+                self.input = self.target[:, self.i].unsqueeze(1)
             self.i += 1
         # update state
-        self.state = (1 - c) * self.state \
-            + c * self.g * torch.matmul(self.weight_matrix, self.activation) \
-            + c * torch.matmul(self.feedback_weight_matrix, self.feedback)
+        self.state = (1 - self.c) * self.state \
+            + self.c * self.g * torch.matmul(self.weight_matrix, self.activation) \
+            + self.c * self.input   # + self.c * torch.matmul(self.feedback_weight_matrix, self.feedback)
+        breakpoint()
         
         # breakpoint()
         
