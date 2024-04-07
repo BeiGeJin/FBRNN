@@ -10,7 +10,7 @@ import os
 import torch.nn as nn
 
 num_iters = 5000
-num_nodes = 32  # stablility of lqr
+num_nodes = 16  # stablility of lqr
 # num_iters = int(input("Enter number of training iterations: "))
 # num_nodes = int(input("Enter number of nodes: "))
 
