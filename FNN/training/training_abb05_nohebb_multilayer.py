@@ -44,6 +44,9 @@ class SimpleNeuralNetwork(nn.Module):
         return self.normal_pdf(x - theta_is) + self.normal_pdf(x - theta_is + 2 * torch.pi) + self.normal_pdf(x - theta_is - 2 * torch.pi)
 
     def forward(self, x):
+        """
+        check activation values here
+        """
         x1 = self.gaussian_rf(x)
         self.l1 = self.activation_func(self.gain[0] * (x1 - self.shift[0]))
         
