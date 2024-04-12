@@ -23,7 +23,7 @@
 \begin{itemize}
     \item I get a deeper understanding of the hebbian correlation rule on readout matrix.
     \item I invent a kind of hebbian learning to solve the phase-shifting problem.
-    \item I implement the framework of feedback control, but still need refinement.
+    \item I implement the framework of feedback control to replace the SGD on gains.
 
 \end{itemize}
 
@@ -96,11 +96,11 @@ In fact, the idea is to generalize the $V$ to $$V = \sum_{t=t_0+1}^T \bar{y}(t)^
 
 It is equivalent to calculate a desired state $\tilde{x}(t) = H^T(HH^{T})^{-1}\tilde{y}(t)$ and so $$V = \sum_{t=t_0+1}^T (x(t) - \tilde{x}(t))^T Q (x(t)- \tilde{x}(t)) + u(t-1)^T R u(t-1)$$ where $Q=\bar{H}^T Q_1 \bar{H} + H^T Q_2 H$
 
-We set $Q_1 = 0.1I$, $Q_2 = 10I$, $R=0.0001I$, and use Jacobian matrix to do the linear approximation of the non-linear system, we could get a result like following:
+We set $Q_1 = 0.1I$, $Q_2 = 10I$, $R=0.0001I$, and use Jacobian matrix to do the linear approximation of the non-linear system. We could get a result like following, where the control seems not bad:
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_track.png} \\
+    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_tracking_output_0412.png} \\
 \end{figure}
 
 Next steps: connect the feedback control framework with the hebbian learning; try a set of basis functions as input (what is an example?).
