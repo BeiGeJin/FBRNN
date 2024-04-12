@@ -20,14 +20,16 @@ class SimpleNeuralNetwork(nn.Module):
     def __init__(self, layer_sizes, init_gain, init_shift, init_weight):
         super(SimpleNeuralNetwork, self).__init__()
         self.input_sizes = layer_sizes
-        self.gain = [torch.tensor(gain, dtype=torch.float32, requires_grad=True) for gain in init_gain]
-        self.shift = [torch.tensor(shift, dtype=torch.float32, requires_grad=True) for shift in init_shift]
+        self.gain_shift_1 = torch.tensor([init_gain[0], init_shift[0]], dtype=torch.float32, requires_grad=True)
+        self.gain_shift_2 = torch.tensor([init_gain[1], init_shift[1]], dtype=torch.float32, requires_grad=True)
+        # self.gain = [torch.tensor(gain, dtype=torch.float32, requires_grad=True) for gain in init_gain]
+        # self.shift = [torch.tensor(shift, dtype=torch.float32, requires_grad=True) for shift in init_shift]
         self.weights = [torch.tensor(weight, dtype=torch.float32) for weight in init_weight]
         self.activation_func = nn.Sigmoid()
 
         # just to record
-        self.init_gain = [torch.tensor(3 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
-        self.init_shift = [torch.tensor(1 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
+        # self.init_gain = [torch.tensor(3 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
+        # self.init_shift = [torch.tensor(1 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
         self.epoch = 0
 
     def normal_pdf(self, theta):
@@ -43,10 +45,10 @@ class SimpleNeuralNetwork(nn.Module):
         check activation values here
         """
         x1 = self.gaussian_rf(x)
-        self.l1 = self.activation_func(self.gain[0] * (x1 - self.shift[0]))
+        self.l1 = self.activation_func(self.gain_shift_1[0] * (x1 - self.gain_shift_1[1]))
         
         x2 = torch.matmul(self.weights[0], self.l1)
-        self.l2 = self.activation_func(self.gain[1] * (x2 - self.shift[1]))
+        self.l2 = self.activation_func(self.gain_shift_2[0] * (x2 - self.gain_shift_2[1]))
         
         x3 = torch.matmul(self.weights[1], self.l2)
         self.output_activation = self.activation_func(3 * (x3 - 1))
@@ -58,7 +60,7 @@ class SimpleNeuralNetwork(nn.Module):
         weirdly performs well with Adam; due to short computation time?
         """
         # optimizer = optim.Adam([self.gain[0], self.shift[0], self.gain[1], self.shift[1]], lr=0.2)
-        optimizer = optim.SGD([self.gain[1], self.shift[1], self.gain[0], self.shift[0]], lr=0.2)
+        optimizer = optim.SGD([self.gain_shift_1, self.gain_shift_2], lr=0.2)
         # optimizer_1 = optim.SGD([], lr=0.2)
         loss_func = nn.MSELoss()
         epoch_loss = 0
@@ -85,7 +87,7 @@ class SimpleNeuralNetwork(nn.Module):
 
 ## RUN
 if __name__ == "__main__":
-    layers = [10, 10]
+    layers = [100, 50]
     init_gain = []
     init_gain.append(3 * np.ones((layers[0], 1)))
     init_gain.append(3 * np.ones((layers[1], 1)))
@@ -130,12 +132,12 @@ if __name__ == "__main__":
         losses.append(epoch_loss)
 
         # update init
-        init_gain_0 = model.gain[0].detach().numpy()
-        init_shift_0 = model.shift[0].detach().numpy()
+        init_gain_0 = model.gain_shift_1[0].detach().numpy()
+        init_shift_0 = model.gain_shift_1[1].detach().numpy()
         # init_weight_0 = model.weights[0].detach().numpy()
         
-        init_gain_1 = model.gain[1].detach().numpy()
-        init_shift_1 = model.shift[1].detach().numpy()
+        init_gain_1 = model.gain_shift_2[0].detach().numpy()
+        init_shift_1 = model.gain_shift_2[1].detach().numpy()
         # init_weight_1 = model.weights[1].detach().numpy()
 
         # print out info
