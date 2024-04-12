@@ -15,6 +15,68 @@
 
 \maketitle
 
+\section*{Week 03/29 - 04/12}
+
+\subsection*{Main Points}
+
+\noindent
+\begin{itemize}
+    \item I get a deeper understanding of the hebbian correlation rule on readout matrix.
+    \item I invent a kind of hebbian learning to solve the phase-shifting problem.
+    \item I implement the framework of feedback control, but still need refinement.
+
+\end{itemize}
+
+\newpage
+
+\subsection*{Hebbian Correlation Rule on Readout Matrix}
+
+The goal of feedback control is to make the output as the target (step 1). Then, hebbian learning could tune the readout weights accordingly (step 2). So it is possible to test hebbian learning separately: we could pretend the output is the target, and test where the hebbian learning would converge (see last week's "The Pipeline of Exploration").
+
+However, this week I found that, \textbf{the hebbian correlation rule would always lead the readout weights to converge to the same point, no matter what the output is}.
+
+So let's first look at our network:
+$$x(t+1) = f(x(t), u(t), I(t))$$
+where $x$ is the activation vector, $u$ is the control input vector, $I$ is the input vector, $f$ is non-linear since there is the sigmoid activation function inside. In more detail:
+$$x(t+1) = (1-c)*x(t) + c*\sigma((g+u(t)) * (Wx(t) + I(t) - s))$$
+where $c$ is the time constant, $\sigma$ is the sigmoid activation function, $g$ is the gain vector, $u$ is applied on the gain (gain modulation), $W$ is the recurrent weight matrix, $s$ is the shift vector.
+
+Now we're testing the convergence point of hebbian learning, so we are not giving the network any control input. So the network looks like this:
+$$x(t+1) = (1-c)*x(t) + c*\sigma(g * (Wx(t) + I(t) - s))$$
+
+For now, the input to every node $I_i(t) = a_i \sin(\frac{\pi}{60}t)$, the sine wave multiplied by a random weight. Then, the activation of every node would converge to a sine wave with the same frequency but different phases and amplitudes.
+
+% x
+
+The output is $z(t)=\sigma(g_{out}*(Hx(t)-s_{out}))$, where $H$ is the readout matrix, $g_{out}$ is the gain of the output node, $s_{out}$ is the shift of the output node. At this stage, although everything is just initialized and I did not tune anything, \textbf{the output is already a sine wave} (with a random scale), since it is just a weighed sum of sine-like activations.
+
+Now, if I turn the hebbian learning on, the readout weights would converge to a point where \textbf{each weight is proportional to the mean activation of the corresponding node} (see the second figure in last week's "Deepen the Understanding of Last Week's Result"). This is because, at each step of the hebbian learning, we are doing $h_i \leftarrow h_i + x_i z$ and then doing the normalization (keeping the sum of $h_i$ as constant), so the $H$ would finally converge to a point proportional to the mean of $x(t)$.
+
+So finally, after the hebbian learning, the output would be a sine wave with a certain scale. I could just hand-tune the $g_{out}$ and $s_{out}$ (or use some very simple algorithm, since there is just 2 parameters) to make the scale the same as the target sine wave. Finally, we would get a phase-shifted target sine wave (see the first figure in last week's "Deepen the Understanding of Last Week's Result").
+
+In summary, to get a phase-shifted target sine wave is really a simple process. We only need to input a sine wave with the same frequency, then every node in the network would follow a sine wave with that frequency. The output is a weighed sum of every node, and Hebbian learning is just changing the way of doing the weighed sum (in the way that the readout weights are proportional to the mean activations).
+
+\newpage
+
+\subsection*{A Hebbian Learning that Correct the Phase}
+
+From the last section, we know that the hebbian correlation rule would lead the weight of one node to be proportional to the mean activation of that node. It could not help the output to have a correct phase as the target. So we'll always get a phase-shifted sine wave. Is there a way to use hebbian learning to learn the correct phase? I invented a hebbian learning rule based on the hebbian correlation rule: $$h_i \leftarrow h_i + (z(t) - \bar{z}) \frac{x_i(t) - \bar{x_i}}{\text{std}(x_i)}$$
+You can image $\bar{x_i}$ and $\text{std}(x_i)$ as constant. If $x_i(t)$ and $z(t)$ has very different phase (e.g., one is at peak while the other one is at trough), then $h_i$ would always decrease. If $x_i(t)$ and $z(t)$ has the same phase, then $h_i$ would increase. (Of course, there is the Dale's law, so for excitatory nodes $h_i$ can't be below zero and for inhibitory nodes $h_i$ can't be above zero; and there is a following normalization to prevent increasing or decreasing infinitely.)
+
+To plot out the relative shift of phase of each node's activation to the target and the readout weights after this hebbian learning, we could get a curve with peak at 0 and a trough at 60 (since here the input and the target sine wave have a period of 120). 
+
+% 
+
+The last step would be to divide the readout weight of each node by the mean activation of that node (so that each node contribute equally to the phase of the output). Then, we could get a output with the correct phase as the target (here the target is $\sin(\frac{\pi}{60}(t+20))$.
+
+% 
+
+Note: in this section we're still testing hebbian learning, so we pretend that $z(t)$ is the target while doing hebbian learning. Also, to get a uniform distribution of relative shift of phase across nodes, the input to each node is a sine wave with a random phase, $I_i(t) = a_i \sin(\frac{\pi}{60}(t+t_i))$. 
+
+In summary, in this section we achieve the result that inputing each node with a sine wave with fixed frequency but random phase, we could use hebbian learning to make the output follows a sine wave with an arbitrary phase.
+
+\newpage
+
 \section*{Week 03/15 - 03/29}
 
 \subsection*{Goal}
