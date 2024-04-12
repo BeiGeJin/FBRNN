@@ -34,6 +34,10 @@ class SimpleNeuralNetwork(nn.Module):
         self.input_activation = self.activation_func(self.gain * (x1 - self.shift))
         x2 = torch.matmul(self.weights, self.input_activation)
         self.output_activation = self.activation_func(3 * (x2 - 1))
+        print(f'x1 is {x1}')
+        print(f'input_cat is {self.input_activation}')
+        print(f'x2 is {x2}')
+        print(f'output_cat is {self.output_activation}')
         return self.output_activation
 
     def train_epoch(self, xs, ys, hebbian_lr = 0.03, hebb_alpha = 5.5, oja_alpha = 1):
@@ -60,7 +64,7 @@ class SimpleNeuralNetwork(nn.Module):
 
 ## RUN
 if __name__ == "__main__":
-    input_size = 230
+    input_size = 10
     init_gain = 3 * np.ones((input_size, 1))
     init_shift = 1 * np.ones((input_size, 1))
     theo_gain = 3 * np.ones((input_size, 1))
@@ -73,7 +77,7 @@ if __name__ == "__main__":
     ys = torch.cos(xs)/4 + 0.5
 
     # Training Loop
-    epochs = 2000
+    epochs = 200
     losses = []
     gain_changes = []
     shift_changes = []
