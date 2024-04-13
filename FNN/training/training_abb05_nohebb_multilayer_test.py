@@ -20,14 +20,16 @@ class SimpleNeuralNetwork(nn.Module):
     def __init__(self, layer_sizes, init_gain, init_shift, init_weight):
         super(SimpleNeuralNetwork, self).__init__()
         self.input_sizes = layer_sizes
-        self.gain = torch.tensor(init_gain, dtype=torch.float32, requires_grad=True)
-        self.shift = torch.tensor(init_shift, dtype=torch.float32, requires_grad=True)
-        self.weights = torch.tensor(init_weight, dtype=torch.float32)
+        self.gain = [torch.tensor(gain, dtype=torch.float32, requires_grad=True) for gain in init_gain]
+        self.shift = [torch.tensor(shift, dtype=torch.float32, requires_grad=True) for shift in init_shift]
+        self.weights = [torch.tensor(weight, dtype=torch.float32) for weight in init_weight]
         self.activation_func = nn.Sigmoid()
-
+        # print(f'gain matrix {self.gain}\n')
+        # print(f'shift matrix {self.shift}\n')
+        # print(f'weight matrix {self.weights}\n')
         # just to record
-        self.init_gain = [torch.tensor(3 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
-        self.init_shift = [torch.tensor(1 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
+        # self.init_gain = [torch.tensor(3 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
+        # self.init_shift = [torch.tensor(1 * np.ones((size, 1)), dtype=torch.float32) for size in self.input_sizes]
         self.epoch = 0
 
     def normal_pdf(self, theta):
@@ -39,35 +41,46 @@ class SimpleNeuralNetwork(nn.Module):
         return self.normal_pdf(x - theta_is) + self.normal_pdf(x - theta_is + 2 * torch.pi) + self.normal_pdf(x - theta_is - 2 * torch.pi)
 
     def forward(self, x):
-        """
-        check activation values here
-        """
-        index = [self.input_sizes[0], self.input_sizes[1]+self.input_sizes[0]]
-
         x1 = self.gaussian_rf(x)
-        self.l1 = self.activation_func(self.gain[:index[0]] * (x1 - self.shift[:index[0]]))
-        
-        # print(self.weights[:index[0]])
-        
-        x2 = torch.matmul(self.weights[:index[0]], self.l1)
-        print(x2)
-        self.l2 = self.activation_func(self.gain[index[0]:index[1]] * (x2 - self.shift[index[0]:index[1]]))
-        
-        x3 = torch.matmul(self.weights[index[0]:index[1]], self.l2)
-        self.output_activation = self.activation_func(3 * (x3 - 1))
-        
+        self.input_activation = self.activation_func(self.gain[0] * (x1 - self.shift[0]))
+        x2 = torch.matmul(self.weights, self.input_activation)
+        self.output_activation = self.activation_func(3 * (x2 - 1))
+        # print(f'x is {x}')
+        # print(f'x1 is {x1}')
+        # print(f'input_cat is {self.input_activation}')
+        # print(f'x2 is {x2}')
+        # print(f'output_cat is {self.output_activation}')
         return self.output_activation
+
+        """
+        x2 = torch.matmul(torch.transpose(self.l1,0,1), self.weights[0])
+        print(x2.size(), len(self.shift[1]), self.gain[1])
+        self.l2 = self.activation_func(self.gain[1] * (x2 - self.shift[1]))[0]
+        
+        # print(torch.transpose(self.l1,0,1).size(), self.weights[0].size(), torch.matmul(torch.transpose(self.l1,0,1), self.weights[0]).size())
+        # print(f'x1 is {x1}')
+        # print(f'l1 is {self.l1}')
+        # print(f'x2 is {x2}')
+        # print(f'l2 is {self.l2}')
+
+        x3 = torch.matmul(self.l2, self.weights[1])
+        self.output_activation = self.activation_func(3 * (x3 - 1))
+        # print(f'x3 is {x3}')
+        # print(f'output activation is {self.output_activation}')
+        return self.output_activation
+        """
 
     def train_epoch(self, xs, ys, hebbian_lr = 0.03, hebb_alpha = 5.5, oja_alpha = 1):
         """
         weirdly performs well with Adam; due to short computation time?
         """
         # optimizer = optim.Adam([self.gain[0], self.shift[0], self.gain[1], self.shift[1]], lr=0.2)
-        optimizer = optim.SGD([self.gain, self.shift], lr=0.2)
+        optimizer = optim.SGD([self.gain[0], self.shift[0]], lr=0.2)
+        # optimizer_1 = optim.SGD([], lr=0.2)
         loss_func = nn.MSELoss()
         epoch_loss = 0
         self.epoch += 1
-        
+
         for x, y in zip(xs, ys):
             optimizer.zero_grad()
             # optimizer_1.zero_grad()
@@ -89,23 +102,24 @@ class SimpleNeuralNetwork(nn.Module):
 
 ## RUN
 if __name__ == "__main__":
-    layers = [50, 30]
-    tot = sum(layers)
-    init_gain = [1,2,3,4,5]*16
-    init_shift = [0.2,0.4,0.6,0.8,1]*16
+    layers = [30, 20]
+    init_gain = [3 * np.ones((node, 1)) for node in layers]
+    init_shift = [1 * np.ones((node, 1)) for node in layers]
     
     theo_gain = 3
     theo_shift = 1
-    init_weight = [5.5/80*n for n in [0.2,0.4,0.6,0.8,1]*16]
-    print(len(init_weight))
-
+    
+    init_weight = [5.5 * np.ones((node, 1)) for node in layers]
+    
+    # print(init_weight[0])
+ 
     # Data Generation, we will generate data points between 0 and 2*pi
     ndata = 200
     xs = torch.linspace(0, 2 * torch.pi, ndata)
     ys = torch.cos(xs)/4 + 0.5
 
     # Training Loop
-    epochs = 200
+    epochs = 50
     losses = []
     
     gain_changes_0 = []
@@ -160,7 +174,7 @@ if __name__ == "__main__":
     print(f"true epochs: {epochs}")
 
     filedir = "../weights/"
-    filename = "weights_abb05_nohebb_multilayer_test.pkl"
+    filename = "weights_abb05_nohebb_multilayer.pkl"
     filepath = filedir + filename
     with open(filepath, 'wb') as f:
         pickle.dump(model, f)
