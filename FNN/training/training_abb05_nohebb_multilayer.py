@@ -42,13 +42,13 @@ class SimpleNeuralNetwork(nn.Module):
         x1 = self.gaussian_rf(x)
         self.input_activation = self.activation_func(self.gain * (x1 - self.shift))
         # print(f'final size is {torch.transpose(torch.tensor(self.input_activation),0,1).size()}')
-        self.weights = torch.tensor([[5.5 / (input_size*input_size1)]*input_size1 for _ in range(input_size)])
+        # self.weights = torch.tensor([[5.5 / (input_size*input_size1)]*input_size1 for _ in range(input_size)])
         # print(len(self.input_activation))
-        
         adjusted_input = torch.transpose(torch.tensor(self.input_activation),0,1)
         x2 = torch.transpose(torch.matmul(adjusted_input, self.weights),0,1)
         """
         x2 is [1 x 50], where 50 is the hidden layer size
+        Jerry: I think x2 now is [50 x 1]
         """
         # print(f'completd, size is {x2.size()}')
         self.input_activation1 = self.activation_func(self.gain1 * (x2 - self.shift1))
@@ -61,11 +61,13 @@ class SimpleNeuralNetwork(nn.Module):
         # print(f'x1 is {x1}')
         # print(f'input_cat is {self.input_activation}')
         # print(f'x2 is {x2}')
+        # print(f'input_cat1 is {self.input_activation1}')
+        # print(f'x3 is {x3}')
         # print(f'output_cat is {self.output_activation}')
         return self.output_activation[0][0]
 
     def train_epoch(self, xs, ys, hebbian_lr = 0.03, hebb_alpha = 5.5, oja_alpha = 1):
-        # optimizer = optim.Adam([self.gain], lr=0.01)
+        # optimizer = optim.Adam([self.gain, self.shift, self.gain1, self.shift1], lr=0.01)
         optimizer = optim.SGD([self.gain, self.shift, self.gain1, self.shift1], lr=0.2)
         loss_func = nn.MSELoss()
         epoch_loss = 0
@@ -80,6 +82,8 @@ class SimpleNeuralNetwork(nn.Module):
             loss.backward()
             optimizer.step()
 
+            # print(model.gain.grad)
+
             # record loss
             epoch_loss += loss
 
@@ -93,12 +97,13 @@ if __name__ == "__main__":
     
     init_gain = 3 * np.ones((input_size, 1))
     init_shift = 1 * np.ones((input_size, 1))
-    init_weight = [np.ones((1, input_size1)) * 5.5 / input_size1 for _ in range(input_size)]
-    # print(np.array(init_weight).shape)
+    # init_weight = [np.ones((1, input_size1)) * 5.5 / input_size1 for _ in range(input_size)]
+    init_weight = np.random.rand(input_size, input_size1) * 5.5 / input_size  # this is to make the activation of each hidden node is different
     
     init_gain1 = 3 * np.ones((input_size1, 1))
     init_shift1 = 1 * np.ones((input_size1, 1))
-    init_weight1 = np.ones((1, input_size1)) * 5.5 / input_size1
+    # init_weight1 = np.ones((1, input_size1)) * 5.5 / input_size1
+    init_weight1 = np.ones((1, input_size1)) / input_size1  # this is to make sure the output sigmoid is not saturated
 
     theo_gain = 3 * np.ones((input_size, 1))
     theo_shift = 1 * np.ones((input_size, 1))
@@ -133,11 +138,17 @@ if __name__ == "__main__":
         init_gain = model.gain.detach().numpy()
         init_shift = model.shift.detach().numpy()
         init_weight = model.weights.detach().numpy()
+        init_gain1 = model.gain1.detach().numpy()
+        init_shift1 = model.shift1.detach().numpy()
+        init_weight1 = model.weights1.detach().numpy()
 
         # print out info
         if epoch % 10 == 0:
             print(f'Epoch {epoch+1}/{epochs}, Loss: {epoch_loss}')
             print(init_gain[0:10])
+            # print(init_gain1[0:10])
+            # print(init_shift[0:10])
+            # print(init_shift1[0:10])
         
         # record
         gain_changes.append(np.linalg.norm(init_gain - theo_gain, 2))
