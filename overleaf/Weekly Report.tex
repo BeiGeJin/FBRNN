@@ -32,10 +32,15 @@
 
 \subsection*{Feedback Control with Hebbian Correlation Rule on Readout Matrix}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_struc.png}
+\end{figure}
+
 The formula for our RNN:
 $$x(t+1) = f(x(t), u(t), I(t))$$
 $$x(t+1) = (1-c)*x(t) + c*\sigma((g+u(t)) * (Wx(t) + I(t) - s))$$
-where $x$ is the activation vector (here 200 nodes), $u$ is the control input vector, $I$ is the input vector, $f$ is non-linear since there is the sigmoid activation function inside, $c$ is the time constant, $\sigma$ is the sigmoid activation function, $g$ is the gain vector, $u$ is applied on the gain (gain modulation), $W$ is the recurrent weight matrix, $s$ is the shift vector. Here, the external input to each node is a sine wave with a random phase but the same frequency as the target, $I_i(t) = a_i \sin(\frac{\pi}{20}(t+t_i))$, where $a_i$ is a random weight. 
+where $x$ is the activation vector (here 200 nodes), $u$ is the control input vector, $I$ is the input vector, $f$ is non-linear since there is the sigmoid activation function inside, $c$ is the time constant, $\sigma$ is the sigmoid activation function, $g$ is the gain vector, $u$ is applied on the gain (gain modulation), $W$ is the recurrent weight matrix, $s$ is the shift vector. Here, the external input to each node is a sine wave with a random phase but the same frequency as the target, $I_i(t) = a_i \sin(\frac{\pi}{20}(t+t_i))$, where $t_i$ is a random phase and $a_i$ is a random weight. 
 
 The output is $z(t)=\sigma(g_{out}*(Hx(t)-s_{out}))$, where $H$ is the readout matrix, $g_{out}$ is the gain of the output node, $s_{out}$ is the shift of the output node. The target output here is $\tilde{z}_t = \sin(\frac{\pi}{20}(t+10))$.
 
@@ -56,16 +61,55 @@ As a result, the control input could eventually go down to 0 while the network s
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_ff_activations.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_ff_outputs_0424.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_ff_activations_0424.png}
 \end{figure}
 
-The output is $z(t)=\sigma(g_{out}*(Hx(t)-s_{out}))$, where $H$ is the readout matrix, $g_{out}$ is the gain of the output node, $s_{out}$ is the shift of the output node. At this stage, although everything is just initialized and I did not tune anything, \textbf{the output is already a sine wave} (with a random scale), since it is just a weighed sum of sine-like activations.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_hebb_output_0510.png}
+\end{figure}
 
-Now, if I turn the hebbian learning on, the readout weights would converge to a point where \textbf{each weight is proportional to the mean activation of the corresponding node} (see the second figure in last week's "Deepen the Understanding of Last Week's Result"). This is because, at each step of the hebbian learning, we are doing $h_i \leftarrow h_i + x_i z$ and then doing the normalization (keeping the sum of $h_i$ as constant), so the $H$ would finally converge to a point proportional to the mean of $x(t)$.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_hebb_last_output_0510.png}
+\end{figure}
 
-So finally, after the hebbian learning, the output would be a sine wave with a certain scale. I could just hand-tune the $g_{out}$ and $s_{out}$ (or use some very simple algorithm, since there is just 2 parameters) to make the scale the same as the target sine wave. Finally, we would get a phase-shifted target sine wave (see the first figure in last week's "Deepen the Understanding of Last Week's Result").
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_hebb_unorm_0510.png}
+\end{figure}
 
-In summary, to get a phase-shifted target sine wave is really a simple process. We only need to input a sine wave with the same frequency, then every node in the network would follow a sine wave with that frequency. The output is a weighed sum of every node, and Hebbian learning is just changing the way of doing the weighed sum (in the way that the readout weights are proportional to the mean activations).
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_weight_phase_0510.png}
+\end{figure}
+
+\newpage
+
+\subsection*{Input a Set of Wave Basis}
+
+In the above section, the frequency of input and target is fixed to be the same. Now, to be more realistic, we let the input to be more random, so that it has a random frequency as well as a random phase. $I_i(t) = a_i \sin(\frac{\pi}{p_i}(t+t_i))$, where $p_i$ is a random half period, $t_i$ is a random phase and $a_i$ is a random weight. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0510.png}
+        \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0510.png}
+\end{figure}
+
+Under this settting, we test feedback control and hebbian learning separately. For feedback control, there is no problem for the output to get to the target.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_tracking_output_0510.png}
+        \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_tracking_activations_0510.png}
+\end{figure}
+
+However, pretending the output is the target, the Hebbian learning (Hebbian Covariance Rule) does not converge to something meaningful. Also, the intuition here is not so clear. Do we expect Hebbian learning to suppress all those nodes with wrong frequencies and phases? Need more investigation.
+
+\newpage
+
+\subsection*{Adaptive Control}
 
 \newpage
 
