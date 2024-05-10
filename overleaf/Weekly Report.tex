@@ -15,6 +15,60 @@
 
 \maketitle
 
+\section*{Week 04/12 - 05/10}
+
+\subsection*{Main Points}
+
+\noindent
+\begin{itemize}
+    \item I combine the feedback control framework with hebbian learning on readout matrix so that the network could learn the correct phase of the sine wave.
+    \item I add a mechanism for adjusting the gain and the shift in the output node to make the output scale correct.
+    \item I try to input a set of wave basis rather than sine wave with fixed frequency. It works for the feedback control but not for the hebbian learning for now.
+    \item I think of the adaptive control.
+
+\end{itemize}
+
+\newpage
+
+\subsection*{Feedback Control with Hebbian Correlation Rule on Readout Matrix}
+
+The formula for our RNN:
+$$x(t+1) = f(x(t), u(t), I(t))$$
+$$x(t+1) = (1-c)*x(t) + c*\sigma((g+u(t)) * (Wx(t) + I(t) - s))$$
+where $x$ is the activation vector (here 200 nodes), $u$ is the control input vector, $I$ is the input vector, $f$ is non-linear since there is the sigmoid activation function inside, $c$ is the time constant, $\sigma$ is the sigmoid activation function, $g$ is the gain vector, $u$ is applied on the gain (gain modulation), $W$ is the recurrent weight matrix, $s$ is the shift vector. Here, the external input to each node is a sine wave with a random phase but the same frequency as the target, $I_i(t) = a_i \sin(\frac{\pi}{20}(t+t_i))$, where $a_i$ is a random weight. 
+
+The output is $z(t)=\sigma(g_{out}*(Hx(t)-s_{out}))$, where $H$ is the readout matrix, $g_{out}$ is the gain of the output node, $s_{out}$ is the shift of the output node. The target output here is $\tilde{z}_t = \sin(\frac{\pi}{20}(t+10))$.
+
+The goal of feedback control is to make the output as closed as the target. For every time point, the controller first linearly approximate $f$ with Jacobian matrix (the idea of Taylor expansion).
+$$x(t+1) \approx  Fx(t) + Gu(t) + constant$$
+Where $F = \frac{\partial f}{\partial x}$ and $G = \frac{\partial f}{\partial u}$ at $(x(t), u(t-1), r(t))$. This is like a step of system identification. This step takes in the information of current state $x(t)$, last control input $u(t-1)$, and current external input $r(t)$. But I believe there is robustness if we just use the estimate of current state $\hat{x}(t)$ (e.g., using Kalman filter).
+
+Then using $F$ and $G$ we do the LQR discrete-time optimal control for tracking a desired output (described last week). This step gets the current control input $u(t)$. 
+
+As we can see, under the feedback control, the network quickly output the target signal.
+
+After 1000 time points, we gradually turn on the hebbian learning to tune the readout weights. The hebbian covariance rule strengthens the weights of those nodes with a correct phase in their activation.
+
+Additionally, after 2000 time points (where we believe the network has learned the phase correctly), we turn on a mechanism so that the control input is forced to turned down gradually, and $g_{out}$ and $s_{out}$ are updated according to a simple rule: $$s_{out} \leftarrow s_{out} + \eta_{out} \text{Sign}(\text{output mean} - \text{target mean})$$
+$$g_{out} \leftarrow g_{out} - \eta_{out} \text{Sign}(\text{output amp} - \text{target amp})$$.
+
+As a result, the control input could eventually go down to 0 while the network still give the target output, with a learned readout matirx and a learned gain and shift in the output node.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{RNN/FORCE/fig/FORCE_ff_activations.png}
+\end{figure}
+
+The output is $z(t)=\sigma(g_{out}*(Hx(t)-s_{out}))$, where $H$ is the readout matrix, $g_{out}$ is the gain of the output node, $s_{out}$ is the shift of the output node. At this stage, although everything is just initialized and I did not tune anything, \textbf{the output is already a sine wave} (with a random scale), since it is just a weighed sum of sine-like activations.
+
+Now, if I turn the hebbian learning on, the readout weights would converge to a point where \textbf{each weight is proportional to the mean activation of the corresponding node} (see the second figure in last week's "Deepen the Understanding of Last Week's Result"). This is because, at each step of the hebbian learning, we are doing $h_i \leftarrow h_i + x_i z$ and then doing the normalization (keeping the sum of $h_i$ as constant), so the $H$ would finally converge to a point proportional to the mean of $x(t)$.
+
+So finally, after the hebbian learning, the output would be a sine wave with a certain scale. I could just hand-tune the $g_{out}$ and $s_{out}$ (or use some very simple algorithm, since there is just 2 parameters) to make the scale the same as the target sine wave. Finally, we would get a phase-shifted target sine wave (see the first figure in last week's "Deepen the Understanding of Last Week's Result").
+
+In summary, to get a phase-shifted target sine wave is really a simple process. We only need to input a sine wave with the same frequency, then every node in the network would follow a sine wave with that frequency. The output is a weighed sum of every node, and Hebbian learning is just changing the way of doing the weighed sum (in the way that the readout weights are proportional to the mean activations).
+
+\newpage
+
 \section*{Week 03/29 - 04/12}
 
 \subsection*{Main Points}
