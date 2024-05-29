@@ -46,7 +46,7 @@ The output is $z(t)=\sigma(g_{out}*(Hx(t)-s_{out}))$, where $H$ is the readout m
 
 The goal of feedback control is to make the output as closed as the target. For every time point, the controller first linearly approximate $f$ with Jacobian matrix (the idea of Taylor expansion).
 $$x(t+1) \approx  Fx(t) + Gu(t) + constant$$
-Where $F = \frac{\partial f}{\partial x}$ and $G = \frac{\partial f}{\partial u}$ at $(x(t), u(t-1), r(t))$. This is like a step of system identification. This step takes in the information of current state $x(t)$, last control input $u(t-1)$, and current external input $r(t)$. But I believe there is robustness if we just use the estimate of current state $\hat{x}(t)$ (e.g., using Kalman filter).
+Where $F = \frac{\partial f}{\partial x}$ and $G = \frac{\partial f}{\partial u}$ at $(x(t), u(t-1), r(t))$. This is like a step of system identification. This step takes in the information of current state $x(t)$, last control input $u(t-1)$, and current external input $r(t)$.
 
 Then using $F$ and $G$ we do the LQR discrete-time optimal control for tracking a desired output (described last week). This step gets the current control input $u(t)$. 
 
@@ -94,7 +94,7 @@ In the above section, the frequency of input and target is fixed to be the same.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0510.png}
-        \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0510.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0510.png}
 \end{figure}
 
 Under this settting, we test feedback control and hebbian learning separately. For feedback control, there is no problem for the output to get to the target.
@@ -102,14 +102,30 @@ Under this settting, we test feedback control and hebbian learning separately. F
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_tracking_output_0510.png}
-        \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_tracking_activations_0510.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_tracking_activations_0510.png}
 \end{figure}
 
 However, pretending the output is the target, the Hebbian learning (Hebbian Covariance Rule) does not converge to something meaningful. Also, the intuition here is not so clear. Do we expect Hebbian learning to suppress all those nodes with wrong frequencies and phases? Need more investigation.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_output_0510.png}
+\end{figure}
+
 \newpage
 
 \subsection*{Adaptive Control}
+
+To my understanding, adaptive control is to deal with the situation when there is a (slow) change in the parameters of the plants. It estimates uncertain plant parameters on-line using measured system signals. It then uses the estimated parameters to compute the control input. Thus, when hebbian learning is doing its work to slowly change the readout weights (or recurrent weights), the controller could change accordingly and maintain a stable performance.
+
+In our framework now, we are directly using the information of the derivative of the non-linear system to linearize it at every time point. Also, we are directly using the information of the full state ($x(t)$). Using adaptive control may give us a more realistic way tf just using the measurement (rather than the full state) to estimate the system and to implement the control. Also, there is example that the adaptive controller could be realized in neural network.
+
+I still need more efforts grasp the techniques of adaptive control. Would that be our next step?
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{MRAC.png}
+\end{figure}
 
 \newpage
 
