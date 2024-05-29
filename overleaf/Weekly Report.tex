@@ -15,6 +15,50 @@
 
 \maketitle
 
+\section*{Week 05/10 - 05/29}
+
+\subsection*{Main Points}
+
+\noindent
+\begin{itemize}
+    \item I continue to make inputing a set of wave basis work.
+\end{itemize}
+
+\newpage
+
+\subsection*{Input a Set of Wave Basis (Continue)}
+
+Continuing last week's attempt, we let the input to have a random frequency as well as a random phase. $I_i(t) = a_i \sin(\frac{\pi}{p_i}(t+t_i))$, where $p_i$ is a random half period, $t_i$ is a random phase and $a_i$ is a random weight. Here, $p_i$ are randomly chosed from 3 values: 10, 20, 30. The target signal is a sine wave with half period 20 and phase 0. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0529.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0529.png}
+\end{figure}
+
+We use feedback control to make the output quickly approach the target, and we turn on Hebbian learning from time point 1000. We use the Hebbian Covariance Rule as usual, but one thing is modified: when the covariance is negative, the punishment to the weight is 30 times more than the increment when the covariance is positive. The idea is to make sure that those nodes with wrong frequency and wrong phase would finally have a weight almost equal to 0. This idea is achieved, as shown in the figure below, where only nodes with correct period (40, since the target half period is 20) and correct phase (around 0 and 40) have non-zero weights.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_output_0529.png} \\
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_unorm_0529.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_period_0529.png} \\
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_phase_0529.png}
+\end{figure}
+
+Eventually, without feedback control but with the modified readout weight matrix, the output could be closed to the target sine wave, under proper scaling. To imporve the precision, we can add more nodes (now only 200 nodes), so that the phases and periods could distribute more densely and uniformly. But we need more effort to ensure the stability of feedback control and more time to run the simulation.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_after_0529.png}
+\end{figure}
+
+\newpage
+
 \section*{Week 04/12 - 05/10}
 
 \subsection*{Main Points}
