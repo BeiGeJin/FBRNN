@@ -28,6 +28,70 @@
 
 \subsection*{Input a Set of Wave Basis (Continue)}
 
+Last week I tried to add a negative punishment (30 times) when using Hebbian Covariance Rule, so that the Hebbian learning could pick out the nodes with the correct period and phase. Kris suggested that I could try some less punishment, e.g., times 1.1.
+
+Here I investigated how the amount of negative punishment would influence the results. The observation is that, with less negative punishment, the nodes with wrong periods or phases would have weights more above 0.
+
+For simplicity, here we assume the feedback control is perfect, so the post synaptic activation of Hebbian learning is always the target (a sine wave with half period 20 and phase 0). The reason of this logic see Week 03/15-03/29.
+
+Here, we let the input to have a random frequency as well as a random phase. $I_i(t) = a_i \sin(\frac{\pi}{p_i}(t+t_i))$, where $p_i$ is a random half period, $t_i$ is a random phase and $a_i$ is a random weight. $p_i$ are randomly chosed from integer values between 15 to 25. The number of nodes is 1000. Half nodes are excitatory and the other half are inhibitory. Sum of excitatory weights is forced to be 250 and sum of inhibitory weights is -250. The whole simulation has 20000 timesteps.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0529.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0605.png}
+\end{figure}
+
+The Hebbian Covariance Rule:
+$$h_i \leftarrow h_i + \delta_{punish}(z(t) - \bar{z})\frac{x_i(t) - \bar{x_i}}{\text{std}(x_i)}$$
+For excitatory neurons, if $(z(t) - \bar{z})(x_i(t) - \bar{x_i}) < 0$, $\delta_{punish}$ has value above 1, otherwise 1. For inhibitory neurons, if $(z(t) - \bar{z})(x_i(t) - \bar{x_i}) > 0$, $\delta_{punish}$ has value above 1, otherwise 1.
+
+\newpage
+
+$\delta_{punish} = 1$:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_period_0605_neg1.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_phase_0605_neg1.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_output_0605_neg1.png}
+\end{figure}
+
+$\delta_{punish} = 1.1$:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_period_0605_neg1.1.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_phase_0605_neg1.1.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_output_0605_neg1.1.png}
+\end{figure}
+
+$\delta_{punish} = 2$:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_period_0605_neg2.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_phase_0605_neg2.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_output_0605_neg2.png}
+\end{figure}
+
+$\delta_{punish} = 5$:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_period_0605_neg5.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_phase_0605_neg5.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_output_0605_neg5.png}
+\end{figure}
+
+$\delta_{punish} = 10$:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_period_0605_neg10.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_hebb_weights_phase_0605_neg10.png}
+    \includegraphics[width=0.9\textwidth]{RNN/FORCE/fig/FORCE_basis_output_0605_neg10.png}
+\end{figure}
 \newpage
 
 \section*{Week 05/10 - 05/29}
