@@ -15,6 +15,28 @@
 
 \maketitle
 
+\section*{Week 06/05 - 06/26}
+
+\subsection*{Main Points}
+
+\noindent
+\begin{itemize}
+    \item Set the pipeline for learning readout weights in RNN.
+    \item Add feedback control on shifts, besides gains.
+    \item Test only do Hebbian Learning on excitatory nodes.
+    \item Implement the Hebbian Covariance Rule from Bouchard (2015).
+\end{itemize}
+
+\newpage
+
+\subsection*{Input a Set of Wave Basis (Continue)}
+
+Last week I tried to add a negative punishment (30 times) when using Hebbian Covariance Rule, so that the Hebbian learning could pick out the nodes with the correct period and phase. Kris suggested that I could try some less punishment, e.g., times 1.1.
+
+Here I investigated how the amount of negative punishment would influence the results. The observation is that, with less negative punishment, the nodes with wrong periods or phases would have weights more above 0.
+
+For simplicity, here we assume the feedback control is perfect, so the post synaptic activation of Hebbian learning is always the target (a sine wave with half period 20 and phase 0). The reason of this logic see Week 03/15-03/29.
+
 \section*{Week 05/29 - 06/05}
 
 \subsection*{Main Points}
@@ -38,7 +60,7 @@ Here, we let the input to have a random frequency as well as a random phase. $I_
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0529.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0605.png}
     \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0605.png}
 \end{figure}
 
