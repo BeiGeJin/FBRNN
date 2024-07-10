@@ -29,13 +29,169 @@
 
 \newpage
 
-\subsection*{Input a Set of Wave Basis (Continue)}
+\subsection*{The Current Pipeline for Learning Readout Weights}
 
-Last week I tried to add a negative punishment (30 times) when using Hebbian Covariance Rule, so that the Hebbian learning could pick out the nodes with the correct period and phase. Kris suggested that I could try some less punishment, e.g., times 1.1.
+\noindent
+\textbf{RNN Basic Setup}:
 
-Here I investigated how the amount of negative punishment would influence the results. The observation is that, with less negative punishment, the nodes with wrong periods or phases would have weights more above 0.
+One recurrent layer, with each node getting external input, fully connected to one output node by readout weight matrix, following Dale's law.
 
-For simplicity, here we assume the feedback control is perfect, so the post synaptic activation of Hebbian learning is always the target (a sine wave with half period 20 and phase 0). The reason of this logic see Week 03/15-03/29.
+\vspace{10pt}
+
+\noindent
+\textbf{Setup Parameters}:
+
+\begin{itemize}
+    \item number of nodes: 200
+    \item recurrent weight matrix: random
+    \item excitatory nodes proportion: 50\%
+    \item initial gains (recurrent layer): 1
+    \item initial shifts (recurrent layer): 0
+    \item initial gain (output node): 2.5
+    \item initial shift (output node): -2.5
+\end{itemize}
+
+\noindent
+\textbf{External Inputs}:
+
+A basis set of sine waves with random periods and phases.
+
+\begin{itemize}
+    \item periods range: 16 or 20 or 24 
+    \item phases range: [0, max phase given period]
+\end{itemize}
+
+\noindent
+\textbf{Feedback Control}:
+
+Linear approximation the dynamic system at the current time point: $$x(t+1) = f(x(t), u_g(t), u_s(t)) \approx  Fx(t) + G_gu_g(t) + G_su_s(t) + \text{const} \approx  F_{aug}x(t) + G_{aug}u(t)$$
+Then using LQR (discreate-time tracking) on both gains and shifts.
+
+\begin{itemize}
+    \item R: 0.0001$I$
+    \item Q1: 0.001$I$
+    \item Q2: 10$I$
+\end{itemize}
+
+\noindent
+\textbf{Hebbian Learning}:
+
+\begin{itemize}
+    \item rule: Hebbian Covariance Rule (on all nodes / only on excitatory nodes / modified version from Kris)
+    \item learning rate: 0.01
+    \item negative punishment: 1.5
+    \item sum of excitatory weights: number of nodes / 4
+    \item sum of inhibitory weights: number of nodes / 4
+\end{itemize}
+
+\newpage
+
+During learning, we want the force of Feedback Control and the force of Hebbian Learning to reach a kind of equilibrium: as Hebbian Learning gradually drives the readout weights to the "correct" weights, Feedback Control gradually turns itself off. However, for now there are two things preventing this from happening:
+
+\noindent
+\textbf{1. The Scale.} The Hebbian Covariance Rule can not let the output to have a correct mean and amplitude. This scale thing is determined by the sum of weights and the gain and the shift of the output node. If the scale is not correct, the Feedback Control will always be on to correct the scale.
+
+One solution is to adjust the gain and the shift of the output node somehow. For now this adjustment (whether through a mechanism or manually) is added after all learning is done. But this seems to be unnatural.
+
+\noindent
+\textbf{2. The Convergence of Hebbian Learning.} As I mentioned in the notes at last meeting, if we want the Feedback Control turns itself off, at a certain time point, when $u_g(t)$ and $u_s(t)$ approaches zero, Hebbian Learning still need to converge on the "correct" weights. This means that Hebbian Learning should converge on the "correct" weights when pre-synaptic activation is the initial activation profile and post-synaptic activation is the target.
+
+One solution is to simply test every possible Hebbian Learning rule on the condition that the initial activation profile and post-synaptic activation is the target. E.g., the tests in Week 05/29 - 06/05. 
+
+\newpage
+
+\subsection*{Results of HCP on All Nodes}
+
+Here we use HCP on all excitatory nodes and inhibitory nodes, with more punishment (1.5) on negative covariance. We hope to give a high weight to the node whose activation has the same phase and period as target. The target here is a sine wave with period of 20.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_output.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_unorm.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_weights_period_neg1.5.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_weights_phase_neg1.5.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_outputs_after.png}
+\end{figure}
+
+Mannually adjusting the gain of the output node to 1.5 and the shift of the output node to 0.1: 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_outputs_after_adjout.png}
+\end{figure}
+
+\newpage
+
+\subsection*{Results of HCP on Only Excitatory Nodes}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_output.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_unorm.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_weights_period.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_weights_phase.png}
+\end{figure}
+
+\newpage
+
+Mannually adjusting the gain of the output node to 2.5 and the shift of the output node to 0.15: 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_output_after_adjout.png}
+\end{figure}
+
+\newpage
+
+\subsection*{Results of HCP from Bouchard (2015)}
+
+The rule is a modified HCP with possibly different learning rate and regularization term for positive covariance and negative covariance. This could be only applied on excitatory nodes since there is a power law. Here we set $A_{+}$ and $A_{-}$ as 0.05 and $\beta = 0.5$.
+
+\begin{eqnarray}
+    \Delta w_i & = & A_{+} \sigma_i \sigma_o f_{+}(w_i) \text{ if } \sigma_i > 0 \text{ and } \sigma_o > 0 \\
+    \Delta w_i & = & A_{-} \sigma_i \sigma_o f_{-}(w_i) \text{ if } \sigma_i \sigma_o < 0
+\end{eqnarray}
+where 
+\begin{eqnarray}
+    f_{+}(w_i) & = & (1 - w_i/\sum w_i)^\beta \\
+    f_{-}(w_i) & = & (w_i/\sum w_i)^\beta
+\end{eqnarray}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_output.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_unorm.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_weights_period.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_weights_phase.png}
+\end{figure}
+
+\newpage
+
+Mannually adjusting the gain of the output node to 3.2 and the shift of the output node to -1.8: 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_output_after_adjout.png}
+\end{figure}
+
+\newpage
+
 
 \section*{Week 05/29 - 06/05}
 
