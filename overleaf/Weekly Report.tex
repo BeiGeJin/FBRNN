@@ -5,6 +5,7 @@
 \usepackage{float}
 \usepackage{indentfirst}
 \usepackage{amsmath}
+\usepackage{xcolor}
 \geometry{left=2.54cm, right=2.54cm, top=3.18cm, bottom=3.18cm}
 % \setlength{\parindent}{0pt}
 
@@ -14,6 +15,350 @@
 \begin{document}
 
 \maketitle
+
+\section*{Week 06/26 - 07/10}
+
+\subsection*{Main Points}
+
+\noindent
+\begin{itemize}
+    \item Add the sparse matrix for inputs.
+    \item Add the rescale mechanism after the output neuron and make the feedback control insensitive to the scale.
+    \item Try a new mechanism to turn the feedback control off manually.
+\end{itemize}
+
+\newpage
+
+\subsection*{The Current Pipeline for Learning Readout Weights}
+
+\noindent
+\textbf{RNN Basic Setup}:
+
+One recurrent layer, with each node getting external input, fully connected to one output node by readout weight matrix, following Dale's law.
+
+\vspace{10pt}
+
+\noindent
+\textbf{Setup Parameters}:
+
+\begin{itemize}
+    \item number of nodes: 200
+    \item recurrent weight matrix: random
+    \item excitatory nodes proportion: 50\%
+    \item initial gains (recurrent layer): 1
+    \item initial shifts (recurrent layer): 0
+    \item initial gain (output node): 1
+    \item initial shift (output node): 0
+\end{itemize}
+
+\noindent
+\textbf{External Inputs}:
+
+A basis set of sine waves with random periods and phases, connecting to neurons through a normalized sparse matrix.
+
+\begin{itemize}
+    \item number of wave basis: 500
+    \item periods range: [8, 12] 
+    \item phases range: [0, max phase given period]
+    \item density of the sparse matrix: 10/500
+\end{itemize}
+
+\noindent
+\textbf{Feedback Control}:
+
+Linear approximation the dynamic system at the current time point: $$x(t+1) = f(x(t), u_g(t), u_s(t)) \approx  Fx(t) + G_gu_g(t) + G_su_s(t) + \text{const} \approx  F_{aug}x(t) + G_{aug}u(t)$$
+Then using LQR (discreate-time tracking) on both gains and shifts. \textcolor{red}{LQR only cares how to correct the period and phase, invariant to the scale of current output.}
+
+\begin{itemize}
+    \item R: 0.0001$I$
+    \item Q1: 0.001$I$
+    \item Q2: 10$I$
+\end{itemize}
+
+\noindent
+\textbf{Hebbian Learning}:
+
+\begin{itemize}
+    \item rule: Hebbian Covariance Rule (modified version from Kris)
+    \item positive learning rate: 0.05
+    \item negative learning rate: 0.06
+    \item beta: 0.2
+    \item sum of excitatory weights: number of nodes / 4
+    \item sum of inhibitory weights: number of nodes / 4
+\end{itemize}
+
+\newpage
+
+\subsection*{Results of HCP from Bouchard (2015)}
+
+The rule is a modified HCP with possibly different learning rate and regularization term for positive covariance and negative covariance. This could be only applied on excitatory nodes since there is a power law. Here we set $A_{+}=0.05$, $A_{-}=0.06$, and $\beta = 0.2$.
+
+\begin{eqnarray}
+    \Delta w_i & = & A_{+} \sigma_i \sigma_o f_{+}(w_i) \text{ if } \sigma_i > 0 \text{ and } \sigma_o > 0 \\
+    \Delta w_i & = & A_{-} \sigma_i \sigma_o f_{-}(w_i) \text{ if } \sigma_i \sigma_o < 0
+\end{eqnarray}
+where 
+\begin{eqnarray}
+    f_{+}(w_i) & = & (1 - w_i/\sum w_i)^\beta \\
+    f_{-}(w_i) & = & (w_i/\sum w_i)^\beta
+\end{eqnarray}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_structure.png}
+\end{figure}
+
+I modify the LQR to make it invariant to the output scale. Why? The rescaling after the output neuron is not "reversible". We can't know advance $y$ should be at what scale.
+
+Normal LQR makes $y$ closed to $\tilde{y}$ (the ideal value before the output neuron) in all aspects. So, the idea is to assume $\tilde{y}$ is of standard scale, that is, having mean of 0 and amplitude of 1. Then, I modify the cost of LQR:
+
+$$V = \sum_{t=t_0+1}^T \bar{y}(t)^T Q_1 \bar{y}(t) + (\frac{y(t) - y_{mean}}{y_{amp}} - \tilde{y}(t))^T Q_2 (\frac{y(t) - y_{mean}}{y_{amp}} - \tilde{y}(t)) + u(t-1)^T R u(t-1)$$ 
+where $\bar{y} = \bar{H}y = (I - H^T(HH^{T})^{-1}H)y$, the part of $x$ orthogonal to $H$, $y_{mean}$ is the mean of $y$ in previous 1000 time points, and $y_{amp}$ is the amplitude of $y$ in previous 1000 time points. 
+
+In other words, we standardize $y$ before sending it to the LQR, so that LQR would only correct its period and phase, leaving the scale intact. We implement this idea by augmenting the system.
+
+\newpage
+
+With the input sparse matrix, the activation of neurons is more like a combination of different sine waves rather than a single sine wave.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_ffactivations.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_ffoutputs.png}
+\end{figure}
+
+\newpage
+
+I start feedback control at t = 1100, hebbian learning at t = 2000.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_output.png}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_output_Zoom1.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_output_Zoom2.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_output_Zoom3.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_FBhebb_output_Zoom4.png}
+\end{figure}
+
+\newpage
+
+It seems that feedback control (already invariant tot the scale) can not turn ifself off. Rather, it reaches an equilibrium with Hebbian learning at some non-zero level.
+
+So at t = 7000, I try to turn off feedback control manually by multiplying 1.01 to the R matrix at each time point.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_unorm.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_activations.png}
+\end{figure}
+
+\newpage
+
+The change of all weights:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_weights.png}
+\end{figure}
+
+\newpage
+
+With the learned readout weight matrix just before the starting of control decay:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0710_addshift_Kris_outputs_after.png}
+\end{figure}
+
+\newpage
+
+\section*{Week 06/05 - 06/26}
+
+\subsection*{Main Points}
+
+\noindent
+\begin{itemize}
+    \item Set the pipeline for learning readout weights in RNN.
+    \item Add feedback control on shifts, besides gains.
+    \item Test only do Hebbian Learning on excitatory nodes.
+    \item Implement the Hebbian Covariance Rule from Bouchard (2015).
+\end{itemize}
+
+\newpage
+
+\subsection*{The Current Pipeline for Learning Readout Weights}
+
+\noindent
+\textbf{RNN Basic Setup}:
+
+One recurrent layer, with each node getting external input, fully connected to one output node by readout weight matrix, following Dale's law.
+
+\vspace{10pt}
+
+\noindent
+\textbf{Setup Parameters}:
+
+\begin{itemize}
+    \item number of nodes: 200
+    \item recurrent weight matrix: random
+    \item excitatory nodes proportion: 50\%
+    \item initial gains (recurrent layer): 1
+    \item initial shifts (recurrent layer): 0
+    \item initial gain (output node): 2.5
+    \item initial shift (output node): -2.5
+\end{itemize}
+
+\noindent
+\textbf{External Inputs}:
+
+A basis set of sine waves with random periods and phases.
+
+\begin{itemize}
+    \item periods range: 16 or 20 or 24 
+    \item phases range: [0, max phase given period]
+\end{itemize}
+
+\noindent
+\textbf{Feedback Control}:
+
+Linear approximation the dynamic system at the current time point: $$x(t+1) = f(x(t), u_g(t), u_s(t)) \approx  Fx(t) + G_gu_g(t) + G_su_s(t) + \text{const} \approx  F_{aug}x(t) + G_{aug}u(t)$$
+Then using LQR (discreate-time tracking) on both gains and shifts.
+
+\begin{itemize}
+    \item R: 0.0001$I$
+    \item Q1: 0.001$I$
+    \item Q2: 10$I$
+\end{itemize}
+
+\noindent
+\textbf{Hebbian Learning}:
+
+\begin{itemize}
+    \item rule: Hebbian Covariance Rule (on all nodes / only on excitatory nodes / modified version from Kris)
+    \item learning rate: 0.01
+    \item negative punishment: 1.5
+    \item sum of excitatory weights: number of nodes / 4
+    \item sum of inhibitory weights: number of nodes / 4
+\end{itemize}
+
+\newpage
+
+During learning, we want the force of Feedback Control and the force of Hebbian Learning to reach a kind of equilibrium: as Hebbian Learning gradually drives the readout weights to the "correct" weights, Feedback Control gradually turns itself off. However, for now there are two things preventing this from happening:
+
+\noindent
+\textbf{1. The Scale.} The Hebbian Covariance Rule can not let the output to have a correct mean and amplitude. This scale thing is determined by the sum of weights and the gain and the shift of the output node. If the scale is not correct, the Feedback Control will always be on to correct the scale.
+
+One solution is to adjust the gain and the shift of the output node somehow. For now this adjustment (whether through a mechanism or manually) is added after all learning is done. But this seems to be unnatural.
+
+\noindent
+\textbf{2. The Convergence of Hebbian Learning.} As I mentioned in the notes at last meeting, if we want the Feedback Control turns itself off, at a certain time point, when $u_g(t)$ and $u_s(t)$ approaches zero, Hebbian Learning still need to converge on the "correct" weights. This means that Hebbian Learning should converge on the "correct" weights when pre-synaptic activation is the initial activation profile and post-synaptic activation is the target.
+
+One solution is to simply test every possible Hebbian Learning rule on the condition that the initial activation profile and post-synaptic activation is the target. E.g., the tests in Week 05/29 - 06/05. 
+
+\newpage
+
+\subsection*{Results of HCP on All Nodes}
+
+Here we use HCP on all excitatory nodes and inhibitory nodes, with more punishment (1.5) on negative covariance. We hope to give a high weight to the node whose activation has the same phase and period as target. The target here is a sine wave with period of 20.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_output.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_unorm.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_weights_period_neg1.5.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_weights_phase_neg1.5.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_outputs_after.png}
+\end{figure}
+
+Mannually adjusting the gain of the output node to 1.5 and the shift of the output node to 0.1: 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_FBhebb_outputs_after_adjout.png}
+\end{figure}
+
+\newpage
+
+\subsection*{Results of HCP on Only Excitatory Nodes}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_output.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_unorm.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_weights_period.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_weights_phase.png}
+\end{figure}
+
+\newpage
+
+Mannually adjusting the gain of the output node to 2.5 and the shift of the output node to 0.15: 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Ext_output_after_adjout.png}
+\end{figure}
+
+\newpage
+
+\subsection*{Results of HCP from Bouchard (2015)}
+
+The rule is a modified HCP with possibly different learning rate and regularization term for positive covariance and negative covariance. This could be only applied on excitatory nodes since there is a power law. Here we set $A_{+}$ and $A_{-}$ as 0.05 and $\beta = 0.5$.
+
+\begin{eqnarray}
+    \Delta w_i & = & A_{+} \sigma_i \sigma_o f_{+}(w_i) \text{ if } \sigma_i > 0 \text{ and } \sigma_o > 0 \\
+    \Delta w_i & = & A_{-} \sigma_i \sigma_o f_{-}(w_i) \text{ if } \sigma_i \sigma_o < 0
+\end{eqnarray}
+where 
+\begin{eqnarray}
+    f_{+}(w_i) & = & (1 - w_i/\sum w_i)^\beta \\
+    f_{-}(w_i) & = & (w_i/\sum w_i)^\beta
+\end{eqnarray}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_output.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_unorm.png}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_weights_period.png}
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_weights_phase.png}
+\end{figure}
+
+\newpage
+
+Mannually adjusting the gain of the output node to 3.2 and the shift of the output node to -1.8: 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{RNN/FORCE/fig/0626_addshift_Kris_output_after_adjout.png}
+\end{figure}
+
+\newpage
+
 
 \section*{Week 05/29 - 06/05}
 
@@ -38,7 +383,7 @@ Here, we let the input to have a random frequency as well as a random phase. $I_
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0529.png}
+    \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_outputs_0605.png}
     \includegraphics[width=0.45\textwidth]{RNN/FORCE/fig/FORCE_basis_ff_activations_0605.png}
 \end{figure}
 
